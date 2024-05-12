@@ -1,37 +1,4 @@
-nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
-possibiliPhi = linspace(-pi+2*pi/nPhi, pi, nPhi);
-sigmaPhi = 2*pi/(1.5*nPhi); %pi/(3*nPhi);
-probMisura_ij = zeros(nPhi,1); % è quello che viene chiamato elle_ij nell'articolo di ICRA 2010
-innovazione = zeros(nTag*nPhi,1);
-pesi = (1/nPhi)*ones(nTag,nPhi);
-pesiNuovi = zeros(nTag,nPhi);
-xHatSLAM = zeros(3+(3+nPhi)*nTag, nPassi); % x = [xr, yr, thetar, {xrL, yrL, rhoL, phiL1, phiL2, ..., phiLH} x nTag]
-P = zeros(3+(3+nPhi)*nTag,3+(3+nPhi)*nTag);
-Probot = zeros(3,3);
-Ptag = diag([0, 0, sigmaDistanzaModello^2, sigmaPhi^2*ones(1,nPhi)]);
-
-xHatSLAMmeno = zeros(3+(3+nPhi)*nTag,1);
-misureRange = zeros(nTag,nPassi);
-F = eye(3+(3+nPhi)*nTag);
-W = zeros(3+(3+nPhi)*nTag,2);
-H = zeros(nTag*nPhi,3+(3+nPhi)*nTag);
-Rs = zeros(nTag*nPhi,nTag*nPhi);
-
-% Inizializzazione
-% Misure iniziali
-misureRange(:,1) = sqrt((xVett(1)-cTag(:,1)).^2+(yVett(1)-cTag(:,2)).^2) + sigmaDistanza*NNrange(:,1);
-% xHatSLAM è inizializzato senza perdita di generalità supponendo di fissare il sistema di riferimento del robot stimato 
-% (che dovrebbe essere in (0,0,0) all'inizio) coincidente con quello vero
-xHatSLAM(1:3, 1) = [xVett(1); yVett(1); thetaVett(1)]';
-xHatSLAM(4:nPhi+3:end, 1) = xHatSLAM(1,1);
-xHatSLAM(5:nPhi+3:end, 1) = xHatSLAM(2,1);
-xHatSLAM(6:nPhi+3:end, 1) = misureRange(:,1);
-for jndPhi = 1:nPhi
-    xHatSLAM(6+jndPhi:nPhi+3:end,1) = possibiliPhi(jndPhi);
-end
-for indTag = 1:nTag    
-    P(4+(3+nPhi)*(indTag-1):3+(3+nPhi)*indTag,4+(3+nPhi)*(indTag-1):3+(3+nPhi)*indTag) = Ptag;
-end
+misureRange(:,1) = sqrt((xVett(1)-cTag(:,1)).^2+(yVett(1)-cTag(:,2)).^2) + sigmaDistanza*randn;
 
 T0 = tic;
 for k = 1:nPassi-1
@@ -70,7 +37,7 @@ for k = 1:nPassi-1
     if mod(k+1,Nstep) == 1 || (Nstep == 1) 
 
         % Incamero la misura di range
-        misureRange(:,k+1) = sqrt((xVett(k+1)-cTag(:,1)).^2+(yVett(k+1)-cTag(:,2)).^2) + sigmaDistanza*NNrange(:,k+1);
+        misureRange(:,k+1) = sqrt((xVett(k+1)-cTag(:,1)).^2+(yVett(k+1)-cTag(:,2)).^2) + sigmaDistanza*randn;
         
         H = zeros(nTag*nPhi,3+(3+nPhi)*nTag); % Jacobiana delle misure di range dh/dx
         
