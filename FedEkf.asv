@@ -2,13 +2,11 @@
 classdef FedEkf < handle
     properties
         data
-        probMisura_ij
         innovazione
         pesi
         xHatSLAM
         P
         Pmeno
-        Probot
         Ptag
         xHatSLAMmeno
         F
@@ -36,12 +34,10 @@ classdef FedEkf < handle
             obj.nPhiVett = data.nPhi*ones(1, nTag);
             nPassi = data.nPassi;
 
-            obj.probMisura_ij = zeros(nPhiMax, 1);
             obj.innovazione = zeros(nTag*nPhiMax, 1);
             obj.pesi = (1/nPhiMax)*ones(nTag, nPhiMax);
             obj.xHatSLAM = zeros(3+(3+nPhiMax)*nTag, nPassi);
             obj.P = zeros(3+(3+nPhiMax)*nTag, 3+(3+nPhiMax)*nTag);
-            obj.Probot = zeros(3,3);
             obj.Ptag = diag([0, 0, sigmaD^2, sigmaPhi^2*ones(1, nPhiMax)]);
 
             obj.xHatSLAMmeno = zeros(3+(3+nPhiMax)*nTag, 1);
@@ -52,7 +48,7 @@ classdef FedEkf < handle
 
             obj.k = 0;
 
-            obj.xHatIndices = [3 (3+nPhiMax)*ones(1, nTag)];
+            obj.xHatIndices = [1 3 (3+nPhiMax)*ones(1, nTag)];
             obj.xHatCumIndices = cumsum(obj.xHatIndices(1:end-1));
 
             % Inizializzazione
@@ -68,7 +64,7 @@ classdef FedEkf < handle
             end
         end
         
-        % 
+
         function [obj] = prediction(obj, uRe, uLe)
             obj.k = obj.k + 1;
 
@@ -101,7 +97,11 @@ classdef FedEkf < handle
             Q = diag([obj.data.KR*abs(uRe); obj.data.KL*abs(uLe)]);
         
             % Calcolo matrice P^-
-            obj.Pmeno = obj.F*obj.P*obj.F' + obj.W*Q*obj.W';
+            try
+                obj.Pmeno = obj.F*obj.P*obj.F' + obj.W*Q*obj.W';
+            catch
+                a = 1
+            end
         end
         
         % 
@@ -111,51 +111,105 @@ classdef FedEkf < handle
             % Stima a priori posizione robot
             x_r = obj.xHatSLAMmeno(1);
             y_r = obj.xHatSLAMmeno(2);
+
+            indMatCum = cumsum([1 obj.nPhiVett(1:end-1)]);
     
             for indTag = 1:nTag
                 % Calcolo della stima a priori della posizione dell'ipotesi 
                 % j del landmark i, quindi la misura attesa da questa posizione, 
                 % la sua probabilità e la corrispondente riga della jacobiana H
+                indMat = indMatCum(indTag);
+
                 nPhi = obj.nPhiVett(indTag);
-                ind = obj.xHatCumIndices(indTag)
-                x_i = obj.xHatSLAMmeno(4+(3+nPhi)*(indTag-1));
-                y_i = obj.xHatSLAMmeno(5+(3+nPhi)*(indTag-1));
-                rho_i = obj.xHatSLAMmeno(6+(3+nPhi)*(indTag-1));
-                for jndPhi = 1:nPhi
-                    phi_ij = obj.xHatSLAMmeno(6+(3+nPhi)*(indTag-1)+jndPhi);
+                ind0 = obj.xHatCumIndices(indTag+1);
+                x_i   = obj.xHatSLAMmeno(0+ind0);
+                y_i   = obj.xHatSLAMmeno(1+ind0);
+                rho_i = obj.xHatSLAMmeno(2+ind0);
+
+                probMisura_ij = zeros(nPhi, 1);
+                for indPhi = 1:nPhi
+                    phi_ij = obj.xHatSLAMmeno(2+ind0+indPhi);
                     cosPhi_ij = cos(phi_ij);
                     sinPhi_ij = sin(phi_ij);
                     xTag_ij = x_i + rho_i*cosPhi_ij;
                     yTag_ij = y_i + rho_i*sinPhi_ij;
                     misuraRange_ij = sqrt((xTag_ij-x_r)^2+(yTag_ij-y_r)^2);
                     deltaMisura_ij = misureRange(indTag) - misuraRange_ij;
-                    obj.innovazione(nPhi*(indTag-1)+jndPhi) = deltaMisura_ij;
-                    obj.probMisura_ij(jndPhi) = exp(-deltaMisura_ij^2/(2*obj.sigmaD^2));
-                    obj.pesi(indTag,jndPhi) = obj.pesi(indTag,jndPhi)*obj.probMisura_ij(jndPhi);
+
+                    
+                    obj.innovazione(indMat+indPhi) = deltaMisura_ij;
+                    probMisura_ij(indPhi) = exp(-deltaMisura_ij^2/(2*obj.sigmaD^2));
+                    obj.pesi(indTag,indPhi) = obj.pesi(indTag,indPhi)*probMisura_ij(indPhi);
     
-                    obj.H(nPhi*(indTag-1)+jndPhi, 1:2) = [x_r-xTag_ij, y_r-yTag_ij];
-                    obj.H(nPhi*(indTag-1)+jndPhi, 3+(3+nPhi)*(indTag-1)+1) = xTag_ij-x_r;
-                    obj.H(nPhi*(indTag-1)+jndPhi, 3+(3+nPhi)*(indTag-1)+2) = yTag_ij-y_r;
-                    obj.H(nPhi*(indTag-1)+jndPhi, 3+(3+nPhi)*(indTag-1)+3) = (xTag_ij-x_r)*cosPhi_ij+(yTag_ij-y_r)*sinPhi_ij;
-                    obj.H(nPhi*(indTag-1)+jndPhi, 6+(3+nPhi)*(indTag-1)+jndPhi)= ((x_r-xTag_ij)*sinPhi_ij+(yTag_ij-y_r)*cosPhi_ij)*rho_i;
-                    obj.H(nPhi*(indTag-1)+jndPhi, :) = obj.H(nPhi*(indTag-1)+jndPhi,:)/misuraRange_ij;
+                    obj.H(indMat+indPhi, 1:2) = [x_r-xTag_ij, y_r-yTag_ij];
+                    obj.H(indMat+indPhi, 0+ind0) = xTag_ij-x_r;
+                    obj.H(indMat+indPhi, 1+ind0) = yTag_ij-y_r;
+                    obj.H(indMat+indPhi, 2+ind0) = (xTag_ij-x_r)*cosPhi_ij+(yTag_ij-y_r)*sinPhi_ij;
+                    obj.H(indMat+indPhi, 2+ind0+indPhi)= ((x_r-xTag_ij)*sinPhi_ij+(yTag_ij-y_r)*cosPhi_ij)*rho_i;
+                    obj.H(indMat+indPhi, :) = obj.H(indMat+indPhi,:)/misuraRange_ij;
                 end
-                lambda_ij = obj.probMisura_ij/sum(obj.probMisura_ij);
+                lambda_ij = probMisura_ij/sum(probMisura_ij);
                 
                 % Matrice covarianza misure con formula che tiene conto dell'Information Sharing
-                for jndPhi = 1:nPhi
-                    obj.Rs(nPhi*(indTag-1)+jndPhi,nPhi*(indTag-1)+jndPhi) = obj.sigmaD^2/(max(.0001, lambda_ij(jndPhi)));
+                for indPhi = 1:nPhi
+                    obj.Rs(indMat+indPhi, indMat+indPhi) = obj.sigmaD^2/(max(0.0001, lambda_ij(indPhi)));
                 end
     
             end
     
             % Aggiornamento stima (a posteriori)
             KalmanGain = obj.Pmeno*obj.H'*pinv(obj.H*obj.Pmeno*obj.H'+obj.Rs);
-            obj.xHatSLAM(:,obj.k+1) = obj.xHatSLAMmeno + KalmanGain*obj.innovazione;
-            obj.P = (eye(3+(3+nPhi)*nTag) - KalmanGain*obj.H)*obj.Pmeno;
+            try
+                obj.xHatSLAM(1:sum(obj.xHatIndices)-1, obj.k+1) = obj.xHatSLAMmeno(1:sum(obj.xHatIndices)-1) + KalmanGain*obj.innovazione;
+            catch
+                a = 2
+            end
+            obj.P = (eye(sum(obj.xHatIndices)-1) - KalmanGain*obj.H)*obj.Pmeno;
     
             % Aggiornamento pesi
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
+
+            % Pruning
+            change = false;
+            for indTag = 1:nTag
+                nPhi = obj.nPhiVett(indTag);
+                for indPhi = 1:nPhi
+                    if obj.pesi(indTag, indPhi) < 0.00001/nPhi
+                        temp = obj.pesi(indTag, indPhi+1:end);
+                        obj.pesi(indTag, indPhi)
+
+
+                        change = true;
+                        obj.pesi(indTag, indPhi) = 0;
+                        obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
+                        obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
+                        obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
+
+                        ind0 = obj.xHatCumIndices(indTag+1);
+                        i = ind0 + 2 + indPhi;
+                        try
+                            obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                        catch
+                            a = 1
+                        end
+                        obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                    end
+                end
+            end
+            if change
+                nPhiTagNew = sum(obj.nPhiVett);
+                stateLenNew = sum(obj.xHatIndices)-1;
+
+                obj.innovazione = zeros(nPhiTagNew, 1);
+    
+                obj.xHatSLAMmeno = zeros(stateLenNew, 1);
+                obj.F = eye(stateLenNew);
+                obj.W = zeros(stateLenNew, 2);
+                obj.H = zeros(nPhiTagNew, stateLenNew);
+                obj.Rs = zeros(nPhiTagNew, nPhiTagNew);
+            end
+
+
         end
     end
 end

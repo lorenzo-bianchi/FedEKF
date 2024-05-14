@@ -26,23 +26,28 @@ for robot = 1:nRobot
     posLoc = [ekfs(robot).xHatSLAM(1:2, k); 1];
     posGlob = TsGL(:, :, robot)*posLoc;
     plot(posGlob(1), posGlob(2), 'o') % pos attuale stimata
+
     for indTag = 1:nTag
-        x_i = ekfs(robot).xHatSLAM(4+(3+nPhi)*(indTag-1), k);
-        y_i = ekfs(robot).xHatSLAM(5+(3+nPhi)*(indTag-1), k);
-        rho_i = ekfs(robot).xHatSLAM(6+(3+nPhi)*(indTag-1), k); % invariante
+        ind0 = ekfs(robot).xHatCumIndices(indTag+1);
+
+        x_i   = ekfs(robot).xHatSLAM(0+ind0, k);
+        y_i   = ekfs(robot).xHatSLAM(1+ind0, k);
+        rho_i = ekfs(robot).xHatSLAM(2+ind0, k); % invariante
         x_ti = 0;
         y_ti = 0;
-        for jndPhi = 1:nPhi
-            phi_ij = ekfs(robot).xHatSLAM(6+(3+nPhi)*(indTag-1)+jndPhi,k);
+
+        nPhi = ekfs(robot).nPhiVett(indTag);
+        for indPhi = 1:nPhi
+            phi_ij = ekfs(robot).xHatSLAM(2+ind0+indPhi, k);
             cosPhi_ij = cos(phi_ij);
             sinPhi_ij = sin(phi_ij);
             xTag_ij = x_i + rho_i*cosPhi_ij;
             yTag_ij = y_i + rho_i*sinPhi_ij;
-            x_ti = x_ti + xTag_ij*ekfs(robot).pesi(indTag,jndPhi);
-            y_ti = y_ti + yTag_ij*ekfs(robot).pesi(indTag,jndPhi);
+            x_ti = x_ti + xTag_ij*ekfs(robot).pesi(indTag, indPhi);
+            y_ti = y_ti + yTag_ij*ekfs(robot).pesi(indTag, indPhi);
             posLoc = [xTag_ij, yTag_ij, 1]';
             posGlob = TsGL(:, :, robot)*posLoc;
-            plot(posGlob(1), posGlob(2), 'g.', 'MarkerSize', max(1, ceil(20*ekfs(robot).pesi(indTag,jndPhi))))
+            plot(posGlob(1), posGlob(2), 'g.', 'MarkerSize', max(1, ceil(20*ekfs(robot).pesi(indTag,indPhi))))
         end
         posLoc = [x_ti, y_ti, 1]';
         posGlob = TsGL(:, :, robot)*posLoc;

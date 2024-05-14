@@ -2,13 +2,11 @@
 classdef FedEkf < handle
     properties
         data
-        probMisura_ij
         innovazione
         pesi
         xHatSLAM
         P
         Pmeno
-        Probot
         Ptag
         xHatSLAMmeno
         F
@@ -36,12 +34,10 @@ classdef FedEkf < handle
             obj.nPhiVett = data.nPhi*ones(1, nTag);
             nPassi = data.nPassi;
 
-            obj.probMisura_ij = zeros(nPhiMax, 1);
             obj.innovazione = zeros(nTag*nPhiMax, 1);
             obj.pesi = (1/nPhiMax)*ones(nTag, nPhiMax);
             obj.xHatSLAM = zeros(3+(3+nPhiMax)*nTag, nPassi);
             obj.P = zeros(3+(3+nPhiMax)*nTag, 3+(3+nPhiMax)*nTag);
-            obj.Probot = zeros(3,3);
             obj.Ptag = diag([0, 0, sigmaD^2, sigmaPhi^2*ones(1, nPhiMax)]);
 
             obj.xHatSLAMmeno = zeros(3+(3+nPhiMax)*nTag, 1);
@@ -68,7 +64,7 @@ classdef FedEkf < handle
             end
         end
         
-        % 
+
         function [obj] = prediction(obj, uRe, uLe)
             obj.k = obj.k + 1;
 
@@ -125,8 +121,10 @@ classdef FedEkf < handle
                 x_i   = obj.xHatSLAMmeno(0+ind0);
                 y_i   = obj.xHatSLAMmeno(1+ind0);
                 rho_i = obj.xHatSLAMmeno(2+ind0);
-                for jndPhi = 1:nPhi
-                    phi_ij = obj.xHatSLAMmeno(2+ind0+jndPhi);
+
+                probMisura_ij = zeros(nPhi, 1);
+                for indPhi = 1:nPhi
+                    phi_ij = obj.xHatSLAMmeno(2+ind0+indPhi);
                     cosPhi_ij = cos(phi_ij);
                     sinPhi_ij = sin(phi_ij);
                     xTag_ij = x_i + rho_i*cosPhi_ij;
@@ -135,33 +133,74 @@ classdef FedEkf < handle
                     deltaMisura_ij = misureRange(indTag) - misuraRange_ij;
 
                     
-                    obj.innovazione(indMat+jndPhi) = deltaMisura_ij;
-                    obj.probMisura_ij(jndPhi) = exp(-deltaMisura_ij^2/(2*obj.sigmaD^2));
-                    obj.pesi(indTag,jndPhi) = obj.pesi(indTag,jndPhi)*obj.probMisura_ij(jndPhi);
+                    obj.innovazione(indMat+indPhi) = deltaMisura_ij;
+                    probMisura_ij(indPhi) = exp(-deltaMisura_ij^2/(2*obj.sigmaD^2));
+                    obj.pesi(indTag,indPhi) = obj.pesi(indTag,indPhi)*probMisura_ij(indPhi);
     
-                    obj.H(indMat+jndPhi, 1:2) = [x_r-xTag_ij, y_r-yTag_ij];
-                    obj.H(indMat+jndPhi, 0+ind0) = xTag_ij-x_r;
-                    obj.H(indMat+jndPhi, 1+ind0) = yTag_ij-y_r;
-                    obj.H(indMat+jndPhi, 2+ind0) = (xTag_ij-x_r)*cosPhi_ij+(yTag_ij-y_r)*sinPhi_ij;
-                    obj.H(indMat+jndPhi, 2+ind0+jndPhi)= ((x_r-xTag_ij)*sinPhi_ij+(yTag_ij-y_r)*cosPhi_ij)*rho_i;
-                    obj.H(indMat+jndPhi, :) = obj.H(indMat+jndPhi,:)/misuraRange_ij;
+                    obj.H(indMat+indPhi, 1:2) = [x_r-xTag_ij, y_r-yTag_ij];
+                    obj.H(indMat+indPhi, 0+ind0) = xTag_ij-x_r;
+                    obj.H(indMat+indPhi, 1+ind0) = yTag_ij-y_r;
+                    obj.H(indMat+indPhi, 2+ind0) = (xTag_ij-x_r)*cosPhi_ij+(yTag_ij-y_r)*sinPhi_ij;
+                    obj.H(indMat+indPhi, 2+ind0+indPhi)= ((x_r-xTag_ij)*sinPhi_ij+(yTag_ij-y_r)*cosPhi_ij)*rho_i;
+                    obj.H(indMat+indPhi, :) = obj.H(indMat+indPhi,:)/misuraRange_ij;
                 end
-                lambda_ij = obj.probMisura_ij/sum(obj.probMisura_ij);
+                lambda_ij = probMisura_ij/sum(probMisura_ij);
                 
                 % Matrice covarianza misure con formula che tiene conto dell'Information Sharing
-                for jndPhi = 1:nPhi
-                    obj.Rs(indMat+jndPhi, indMat+jndPhi) = obj.sigmaD^2/(max(0.0001, lambda_ij(jndPhi)));
+                for indPhi = 1:nPhi
+                    obj.Rs(indMat+indPhi, indMat+indPhi) = obj.sigmaD^2/(max(0.0001, lambda_ij(indPhi)));
                 end
     
             end
     
             % Aggiornamento stima (a posteriori)
             KalmanGain = obj.Pmeno*obj.H'*pinv(obj.H*obj.Pmeno*obj.H'+obj.Rs);
-            obj.xHatSLAM(:,obj.k+1) = obj.xHatSLAMmeno + KalmanGain*obj.innovazione;
+            obj.xHatSLAM(1:sum(obj.xHatIndices)-1, obj.k+1) = obj.xHatSLAMmeno(1:sum(obj.xHatIndices)-1) + KalmanGain*obj.innovazione;
             obj.P = (eye(sum(obj.xHatIndices)-1) - KalmanGain*obj.H)*obj.Pmeno;
     
             % Aggiornamento pesi
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
+
+            % Pruning
+            change = false;
+            for indTag = 1:nTag
+                nPhi = obj.nPhiVett(indTag);
+                indPhi = 1;
+                while indPhi <= nPhi
+                    if obj.pesi(indTag, indPhi) < 0.00001/nPhi
+                        change = true;
+                        nPhi = nPhi - 1;
+
+                        temp = obj.pesi(indTag, indPhi+1:end);
+                        obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
+                        obj.pesi(indTag, end) = 0;
+
+                        obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
+                        obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
+                        obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
+
+                        ind0 = obj.xHatCumIndices(indTag+1);
+                        i = ind0 + 2 + indPhi;
+                        obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                        obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                        obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
+                    else
+                        indPhi = indPhi + 1;
+                    end
+                end
+            end
+            if change
+                nPhiTagNew = sum(obj.nPhiVett);
+                stateLenNew = sum(obj.xHatIndices)-1;
+
+                obj.innovazione = zeros(nPhiTagNew, 1);
+    
+                obj.xHatSLAMmeno = zeros(stateLenNew, 1);
+                obj.F = eye(stateLenNew);
+                obj.W = zeros(stateLenNew, 2);
+                obj.H = zeros(nPhiTagNew, stateLenNew);
+                obj.Rs = zeros(nPhiTagNew, nPhiTagNew);
+            end
         end
     end
 end

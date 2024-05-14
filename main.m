@@ -1,64 +1,70 @@
 clc; clear; close all;
 
-DISEGNA = 1;
-GENERA = 1;
-displayErrori = 1;
-
-nRobot = 1;
-
-dati % definisce alcune costanti del problema
-
-percorsi = zeros(nPassi, 5, nRobot);
-ekfs = FedEkf.empty(nRobot, 0);
-TsGL = zeros(3, 3, nRobot);
-TsLG = zeros(3, 3, nRobot);
-for robot = 1:nRobot
-    percorsi(:, :, robot) = percorsoRandom(data, GENERA);     % xVett, yVett, thetaVett, uRe, uLe
-
-    x0 = percorsi(1, 1, robot);
-    y0 = percorsi(1, 2, robot);
-    theta0 = percorsi(1, 3, robot);
-    TsGL(:, :, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
-    TsLG(:, :, robot) = TsGL(:, :, robot)^-1;
-
-    misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
-
-    stato0 = [0, 0, 0];
-    ekfs(robot) = FedEkf(data, stato0, misureRange, sigmaDistanzaModello, sigmaPhi);
-
-    if DISEGNA
-        figure(robot)
-    end
-end
-
-if nRobot > 1 && DISEGNA
-    disp("Premi invio...")
-    pause
-end
-
-tic;
-for k = 2:nPassi
+for i = 1:10
+    rng(i);
+    
+    DISEGNA = 0;
+    GENERA = 1;
+    displayErrori = 1;
+    
+    nRobot = 4;
+    
+    dati % definisce alcune costanti del problema
+    
+    percorsi = zeros(nPassi, 5, nRobot);
+    ekfs = FedEkf.empty(nRobot, 0);
+    TsGL = zeros(3, 3, nRobot);
+    TsLG = zeros(3, 3, nRobot);
     for robot = 1:nRobot
-        x = percorsi(k, 1, robot);
-        y = percorsi(k, 2, robot);
-        uRe = percorsi(k, 4 ,robot);
-        uLe = percorsi(k, 5 ,robot);
-        % PREDIZIONE
-        ekfs(robot).prediction(uRe, uLe);
-        
-        % CORREZIONE (ogni Nstep passi)
-        if mod(k, Nstep) == 0
-            misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
-            ekfs(robot).correction(misureRange);
+        percorsi(:, :, robot) = percorsoRandom(data, GENERA);     % xVett, yVett, thetaVett, uRe, uLe
+    
+        x0 = percorsi(1, 1, robot);
+        y0 = percorsi(1, 2, robot);
+        theta0 = percorsi(1, 3, robot);
+        TsGL(:, :, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
+        TsLG(:, :, robot) = TsGL(:, :, robot)^-1;
+    
+        misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
+    
+        stato0 = [0, 0, 0];
+        ekfs(robot) = FedEkf(data, stato0, misureRange, sigmaDistanzaModello, sigmaPhi);
+    
+        if DISEGNA
+            figure(robot)
         end
     end
-
-    if DISEGNA && mod(k,5) == 1
-        disegna
+    
+    if nRobot > 1 && DISEGNA
+        disp("Premi invio...")
+        pause
     end
+    
+    tic;
+    for k = 2:nPassi
+        for robot = 1:nRobot
+            x = percorsi(k, 1, robot);
+            y = percorsi(k, 2, robot);
+            uRe = percorsi(k, 4 ,robot);
+            uLe = percorsi(k, 5 ,robot);
+            % PREDIZIONE
+            ekfs(robot).prediction(uRe, uLe);
+            
+            % CORREZIONE (ogni Nstep passi)
+            if mod(k, Nstep) == 0
+                misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
+                ekfs(robot).correction(misureRange);
+            end
+        end
+    
+        if DISEGNA && mod(k,5) == 1
+            disegna
+        end
+    end
+    DeltaTsim = toc;
+    fprintf("Tempo impiegato: %f s:\n", toc);
 end
-DeltaTsim = toc;
-fprintf("Tempo impiegato: %f s:\n", toc);
+
+return
 
 %% Calcolo distanze vere e stimate tag-tag e tag-robot (errori SLAM relativi)
 for robot = 1:nRobot
