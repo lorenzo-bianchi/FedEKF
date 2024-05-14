@@ -64,8 +64,6 @@ for i = 1:10
     fprintf("Tempo impiegato: %f s:\n", toc);
 end
 
-return
-
 %% Calcolo distanze vere e stimate tag-tag e tag-robot (errori SLAM relativi)
 for robot = 1:nRobot
     xVett = percorsi(:, 1, robot);
@@ -78,19 +76,23 @@ for robot = 1:nRobot
     xHatTag = zeros(nTag,1);
     yHatTag = zeros(nTag,1);
     for indTag = 1:nTag
-        x_i = ekfs(robot).xHatSLAM(4+(3+nPhi)*(indTag-1),end);
-        y_i = ekfs(robot).xHatSLAM(5+(3+nPhi)*(indTag-1),end);
-        rho_i = ekfs(robot).xHatSLAM(6+(3+nPhi)*(indTag-1),end);
+        ind0 = ekfs(robot).xHatCumIndices(indTag+1);
+
+        x_i   = ekfs(robot).xHatSLAM(0+ind0, k);
+        y_i   = ekfs(robot).xHatSLAM(1+ind0, k);
+        rho_i = ekfs(robot).xHatSLAM(2+ind0, k);
         x_ti = 0;
         y_ti = 0;
-        for jndPhi = 1:nPhi
-            phi_ij = ekfs(robot).xHatSLAM(6+(3+nPhi)*(indTag-1)+jndPhi,end);
+
+        nPhi = ekfs(robot).nPhiVett(indTag);
+        for indPhi = 1:nPhi
+            phi_ij = ekfs(robot).xHatSLAM(2+ind0+indPhi, end);
             cosPhi_ij = cos(phi_ij);
             sinPhi_ij = sin(phi_ij);
             xTag_ij = x_i + rho_i*cosPhi_ij;
             yTag_ij = y_i + rho_i*sinPhi_ij;
-            x_ti = x_ti + xTag_ij*ekfs(robot).pesi(indTag, jndPhi);
-            y_ti = y_ti + yTag_ij*ekfs(robot).pesi(indTag, jndPhi);
+            x_ti = x_ti + xTag_ij*ekfs(robot).pesi(indTag, indPhi);
+            y_ti = y_ti + yTag_ij*ekfs(robot).pesi(indTag, indPhi);
         end
         xHatTag(indTag) = x_ti;
         yHatTag(indTag) = y_ti;
