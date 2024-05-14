@@ -1,6 +1,6 @@
 data = struct();
 
-nPassi = 200;
+nPassi = 1000;
 
 Nstep = 1; % passi tra una misura e la successiva
 nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
