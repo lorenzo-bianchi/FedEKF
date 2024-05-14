@@ -8,9 +8,9 @@ function [lato, distanza] = distanzaBordo(Xt, Yt, Thetat)
     
     P = zeros(numVertici,2); % matrice coordinate vertici
     P(1,:) = [0,0];
-    P(2,:) = [200,0];
-    P(3,:) = [200,200];
-    P(4,:) = [0,200];
+    P(2,:) = [2,0];
+    P(3,:) = [2,2];
+    P(4,:) = [0,2];
     
     % M = [P1 P2; P2 P3; P3 P4; ... P_{numVertici} P1];  % matrice dei lati: la
     % riga i contiene i due vertici del lato i del perimetro, quindi ci sono 
@@ -24,8 +24,8 @@ function [lato, distanza] = distanzaBordo(Xt, Yt, Thetat)
     numSegmenti = numVertici; % numero dei lati del perimetro dell'ambiente
     
     % Coefficienti delle rette contenenti i lati del perimetro
-    n = ones (1,numSegmenti); % coefficienti angolari rette
-    q = ones (1,numSegmenti); % intercette rette
+    n = ones(1,numSegmenti); % coefficienti angolari rette
+    q = ones(1,numSegmenti); % intercette rette
     for lato = 1:numSegmenti
        P1x = M(lato,1);
        P1y = M(lato,2);

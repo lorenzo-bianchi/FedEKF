@@ -1,30 +1,37 @@
-clc; clear; close;
+clc; clear; close all;
 
-DISEGNA = true;
-GENERA = true;
-displayErrori = true;
+DISEGNA = 1;
+GENERA = 1;
+displayErrori = 1;
 
-nRobot = 4;
+nRobot = 1;
 
 dati % definisce alcune costanti del problema
 
 percorsi = zeros(nPassi, 5, nRobot);
 ekfs = FedEkf.empty(nRobot, 0);
+TsGL = zeros(3, 3, nRobot);
+TsLG = zeros(3, 3, nRobot);
 for robot = 1:nRobot
     percorsi(:, :, robot) = percorsoRandom(data, GENERA);     % xVett, yVett, thetaVett, uRe, uLe
 
-    x = percorsi(1, 1, robot);
-    y = percorsi(1, 2, robot);
-    misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
-    
-    ekfs(robot) = FedEkf(data, percorsi(1, 1:3, robot), misureRange, sigmaDistanzaModello, sigmaPhi);
+    x0 = percorsi(1, 1, robot);
+    y0 = percorsi(1, 2, robot);
+    theta0 = percorsi(1, 3, robot);
+    TsGL(:, :, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
+    TsLG(:, :, robot) = TsGL(:, :, robot)^-1;
+
+    misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
+
+    stato0 = [0, 0, 0];
+    ekfs(robot) = FedEkf(data, stato0, misureRange, sigmaDistanzaModello, sigmaPhi);
 
     if DISEGNA
         figure(robot)
     end
 end
 
-if nRobot > 1
+if nRobot > 1 && DISEGNA
     disp("Premi invio...")
     pause
 end

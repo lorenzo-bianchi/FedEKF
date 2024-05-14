@@ -1,26 +1,27 @@
 function percorso = percorsoRandom(data, GENERA)
     gradi = pi/180;
     if GENERA
-        passoOdometrico = 1;
+        passoOdometrico = 0.01;
         nPassi = data.nPassi;
         dVera = data.dVera;
         deltaRvera = data.deltaRvera;
         deltaLvera = data.deltaLvera;
         KRvera = data.KRvera;
         KLvera = data.KLvera;
+        L = data.L;
 
         % Definizione dei vettori x, y e theta delle coordinate del robot durante la simulazione:
         xVett = zeros(nPassi,1);
         yVett = zeros(nPassi,1);
         thetaVett = zeros(nPassi,1);
         
-        clearance = 75; %.3*L;
+        clearance = 0.75; %.3*L;
     
         deltaTheta = zeros(nPassi,1);
     
-        xVett(1) = 100+clearance*cos(2*pi*rand()); %clearance;% + rand*(L-2*clearance);
-        yVett(1) = 100+clearance*sin(2*pi*rand()); %70;% clearance + rand*(L-2*clearance);
-        thetaVett(1) = 0; %360*rand*gradi; % angolo in radianti: gradi e' il fattore di conversione
+        xVett(1) = (L-2*clearance)*rand + clearance; % 1 + clearance*cos(2*pi*rand()); %clearance;% + rand*(L-2*clearance);
+        yVett(1) = (L-2*clearance)*rand + clearance; % 1 + clearance*sin(2*pi*rand()); %70;% clearance + rand*(L-2*clearance);
+        thetaVett(1) = 3.14159;%360*rand - 180; % angolo in gradi
         deltaRho = passoOdometrico*ones(nPassi,1);
     
         uR = zeros(nPassi,1);
@@ -29,19 +30,17 @@ function percorso = percorsoRandom(data, GENERA)
         cinque = 100; %150; % angolo max di curva totale
         uno = 5; % angolo max di curva in uno step
     
-        minDistTag = 20;
-    
         k = 1;
         while k < nPassi
             [lato, distanza] = distanzaBordo(xVett(k), yVett(k), thetaVett(k));
             distanzaTag = Inf; %sqrt((xVett(k)-cTag(1,1))^2+(yVett(k)-cTag(1,2))^2);
-            % if distanzaTag < 20
+            % if distanzaTag < 0.2
             %     if abs(atan2(cTag(1,2)-yVett(k), cTag(1,1)-xVett(k))-thetaVett(k)) > 20*pi/180
             %         distanzaTag = Inf;
             %     end
             % end
           
-            if distanza < clearance || distanzaTag < 20 % ho da girà!
+            if distanza < clearance || distanzaTag < 0.2 % ho da girà!
                 curvaDaFare = max(uno, rand*cinque); % è la curva in gradi che deve essere effettuata
                 passiCurvaDaFare = round(curvaDaFare/uno); % è il numero di passi che il robot impiegherà per fare la curva
                 gradiPerPasso = curvaDaFare/passiCurvaDaFare;
@@ -50,7 +49,7 @@ function percorso = percorsoRandom(data, GENERA)
                 indiceK = kIn:kFin;
                 direzione = mod(round(thetaVett(k)/gradi), 360); % direzione in gradi tra 1 e 360        
                 deltaRho(indiceK) = 0; % mi fermo
-                if distanzaTag < 20 % mi sto dirigendo sotto il tag
+                if distanzaTag < 0.2 % mi sto dirigendo sotto il tag
                     deltaTheta(indiceK) = gradiPerPasso*gradi; % giro verso destra
                 end
                 if lato == 1 % mi sto dirigendo contro il lato sotto
@@ -82,27 +81,24 @@ function percorso = percorsoRandom(data, GENERA)
                     uR(k) = (deltaRho(k) + (dVera/2)*deltaTheta(k))/deltaRvera;
                     uL(k) = (deltaRho(k) - (dVera/2)*deltaTheta(k))/deltaLvera;
     
-                    xVett(k+1)= xVett(k)+ ((deltaRvera*uR(k)+deltaLvera*uL(k))/2)*cos(thetaVett(k));
-                    yVett(k+1)= yVett(k)+ ((deltaRvera*uR(k)+deltaLvera*uL(k))/2)*sin(thetaVett(k));
-                    thetaVett(k+1)= thetaVett(k)+ ((deltaRvera*uR(k)-deltaLvera*uL(k))/dVera);
-                    % k
-                end   
+                    xVett(k+1) = xVett(k) + ((deltaRvera*uR(k)+deltaLvera*uL(k))/2)*cos(thetaVett(k));
+                    yVett(k+1) = yVett(k) + ((deltaRvera*uR(k)+deltaLvera*uL(k))/2)*sin(thetaVett(k));
+                    thetaVett(k+1) = thetaVett(k) + ((deltaRvera*uR(k)-deltaLvera*uL(k))/dVera);
+                end
             else
                 uR(k) = (deltaRho(k) + (dVera/2)*deltaTheta(k))/deltaRvera;
                 uL(k) = (deltaRho(k) - (dVera/2)*deltaTheta(k))/deltaLvera;
     
-                xVett(k+1)= xVett(k)+ ((deltaRvera*uR(k)+deltaLvera*uL(k))/2)*cos(thetaVett(k));
-                yVett(k+1)= yVett(k)+ ((deltaRvera*uR(k)+deltaLvera*uL(k))/2)*sin(thetaVett(k));
-                thetaVett(k+1)= thetaVett(k)+ ((deltaRvera*uR(k)-deltaLvera*uL(k))/dVera);
-                % k
+                xVett(k+1) = xVett(k) + ((deltaRvera*uR(k)+deltaLvera*uL(k))/2)*cos(thetaVett(k));
+                yVett(k+1) = yVett(k) + ((deltaRvera*uR(k)+deltaLvera*uL(k))/2)*sin(thetaVett(k));
+                thetaVett(k+1) = thetaVett(k) + ((deltaRvera*uR(k)-deltaLvera*uL(k))/dVera);
             end
             
             k = k + 1;        
             % pause
         end
     
-        % Passaggio dagli spostamenti deltaRho e deltaTheta agli spostamenti delle
-        % due ruote
+        % Passaggio da deltaRho e deltaTheta agli spostamenti delle due ruote
         uR = (deltaRho + (dVera/2)*deltaTheta)/deltaRvera;
         uL = (deltaRho - (dVera/2)*deltaTheta)/deltaLvera;
         

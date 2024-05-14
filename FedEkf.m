@@ -5,7 +5,6 @@ classdef FedEkf < handle
         probMisura_ij
         innovazione
         pesi
-        pesiNuovi
         xHatSLAM
         P
         Pmeno
@@ -36,7 +35,6 @@ classdef FedEkf < handle
             obj.probMisura_ij = zeros(nPhi, 1);
             obj.innovazione = zeros(nTag*nPhi, 1);
             obj.pesi = (1/nPhi)*ones(nTag, nPhi);
-            obj.pesiNuovi = zeros(nTag, nPhi);
             obj.xHatSLAM = zeros(3+(3+nPhi)*nTag, nPassi);
             obj.P = zeros(3+(3+nPhi)*nTag, 3+(3+nPhi)*nTag);
             obj.Probot = zeros(3,3);
@@ -51,8 +49,6 @@ classdef FedEkf < handle
             obj.k = 0;
 
             % Inizializzazione
-            % xHatSLAM è inizializzato senza perdita di generalità supponendo di fissare il sistema di riferimento del robot stimato 
-            % (che dovrebbe essere in (0,0,0) all'inizio) coincidente con quello vero
             obj.xHatSLAM(1:3, 1) = x0;
             obj.xHatSLAM(4:nPhi+3:end, 1) = obj.xHatSLAM(1,1);
             obj.xHatSLAM(5:nPhi+3:end, 1) = obj.xHatSLAM(2,1);
@@ -127,7 +123,7 @@ classdef FedEkf < handle
                     deltaMisura_ij = misureRange(indTag) - misuraRange_ij;
                     obj.innovazione(nPhi*(indTag-1)+jndPhi) = deltaMisura_ij;
                     obj.probMisura_ij(jndPhi) = exp(-deltaMisura_ij^2/(2*obj.sigmaD^2));
-                    obj.pesiNuovi(indTag,jndPhi) = obj.pesi(indTag,jndPhi)*obj.probMisura_ij(jndPhi);
+                    obj.pesi(indTag,jndPhi) = obj.pesi(indTag,jndPhi)*obj.probMisura_ij(jndPhi);
     
                     obj.H(nPhi*(indTag-1)+jndPhi, 1:2) = [x_r-xTag_ij, y_r-yTag_ij];
                     obj.H(nPhi*(indTag-1)+jndPhi, 3+(3+nPhi)*(indTag-1)+1) = xTag_ij-x_r;
@@ -145,16 +141,13 @@ classdef FedEkf < handle
     
             end
     
-            % Aggiornamento stima (stima a posteriori)
+            % Aggiornamento stima (a posteriori)
             KalmanGain = obj.Pmeno*obj.H'*pinv(obj.H*obj.Pmeno*obj.H'+obj.Rs);
             obj.xHatSLAM(:,obj.k+1) = obj.xHatSLAMmeno + KalmanGain*obj.innovazione;
             obj.P = (eye(3+(3+nPhi)*nTag) - KalmanGain*obj.H)*obj.Pmeno;
     
             % Aggiornamento pesi
-            for indTag = 1:nTag
-                obj.pesi(indTag,:) = obj.pesiNuovi(indTag,:)/sum(obj.pesiNuovi(indTag,:));
-            end
-
+            obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
         end
     end
 end
