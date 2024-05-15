@@ -1,13 +1,13 @@
 clc; clear; close all;
 
-for i = 1:10
+for i = 1:1
     rng(i);
     
     DISEGNA = 0;
     GENERA = 1;
     displayErrori = 1;
     
-    nRobot = 4;
+    nRobot = 1;
     
     dati % definisce alcune costanti del problema
     
@@ -109,20 +109,18 @@ for robot = 1:nRobot
             distanzeInterTagStimate(indice) = sqrt((xHatTag(indTag)-xHatTag(jndTag)).^2+(yHatTag(indTag)-yHatTag(jndTag)).^2);
         end
     end
-    
-    % Calcolo errori assoluti (= distanza) tra posizione vera e stimata di tag e
-    % robot (errore assoluto SLAM)
+
     erroriAssolutiTag = zeros(1,nTag);
-    for indTag = 1:nTag
-        erroriAssolutiTag(indTag) = sqrt((xHatTag(indTag)-cTag(indTag,1))^2+(yHatTag(indTag)-cTag(indTag,2))^2);
-    end
-    erroreAssolutoRobot = sqrt((x_r-xVett(end))^2+(y_r-yVett(end))^2);
-    erroreTraiettoria = zeros(nPassi,1);
+    posHatTagLoc = [xHatTag'; yHatTag'; ones(1, nTag)];
+    posHatTagGlob = TsGL(:, :, robot)*posHatTagLoc;
     
-    % Calcolo errore assoluto stima posizione robot nei vari passi
-    for k = 1:nPassi
-        erroreTraiettoria(k) = sqrt((xVett(k)-ekfs(robot).xHatSLAM(1,k))^2+(yVett(k)-ekfs(robot).xHatSLAM(2,k))^2);
+    for indTag = 1:nTag
+        erroriAssolutiTag(indTag) = sqrt( (posHatTagGlob(1,indTag)-cTag(indTag,1))^2+(posHatTagGlob(2,indTag)-cTag(indTag,2))^2 );
     end
+
+    posRobLoc = [x_r; y_r; 1];
+    posRobGlob = TsGL(:, :, robot)*posRobLoc;
+    erroreAssolutoRobot = sqrt((posRobGlob(1)-xVett(end))^2+(posRobGlob(2)-yVett(end))^2);
     
     if displayErrori
         fprintf("Robot %d:\n", robot);
