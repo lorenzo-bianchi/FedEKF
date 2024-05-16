@@ -1,16 +1,15 @@
-function [lato, distanza] = distanzaBordo(Xt, Yt, Thetat)
+function [lato, distanza] = distanzaBordo(Xt, Yt, Thetat, L)
     % Il lato 1 è quello sotto e via a seguire in senso antiorario gli altri
     
     tol = 0.001;
     RaggioCirconfRobot = 0.01;
     
     numVertici = 4;
-    
     P = zeros(numVertici,2); % matrice coordinate vertici
     P(1,:) = [0,0];
-    P(2,:) = [2,0];
-    P(3,:) = [2,2];
-    P(4,:) = [0,2];
+    P(2,:) = [L,0];
+    P(3,:) = [L,L];
+    P(4,:) = [0,L];
     
     % M = [P1 P2; P2 P3; P3 P4; ... P_{numVertici} P1];  % matrice dei lati: la
     % riga i contiene i due vertici del lato i del perimetro, quindi ci sono 

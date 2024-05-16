@@ -21,18 +21,18 @@ function percorso = percorsoRandom(data, GENERA)
     
         xVett(1) = (L-2*clearance)*rand + clearance; % 1 + clearance*cos(2*pi*rand()); %clearance;% + rand*(L-2*clearance);
         yVett(1) = (L-2*clearance)*rand + clearance; % 1 + clearance*sin(2*pi*rand()); %70;% clearance + rand*(L-2*clearance);
-        thetaVett(1) = 3.14159;%360*rand - 180; % angolo in gradi
+        thetaVett(1) = 360*rand - 180; % angolo in gradi
         deltaRho = passoOdometrico*ones(nPassi,1);
     
         uR = zeros(nPassi,1);
         uL = zeros(nPassi,1);
     
-        cinque = 100; %150; % angolo max di curva totale
+        cinque = 150; % angolo max di curva totale
         uno = 5; % angolo max di curva in uno step
     
         k = 1;
         while k < nPassi
-            [lato, distanza] = distanzaBordo(xVett(k), yVett(k), thetaVett(k));
+            [lato, distanza] = distanzaBordo(xVett(k), yVett(k), thetaVett(k), data.L);
             distanzaTag = Inf; %sqrt((xVett(k)-cTag(1,1))^2+(yVett(k)-cTag(1,2))^2);
             % if distanzaTag < 0.2
             %     if abs(atan2(cTag(1,2)-yVett(k), cTag(1,1)-xVett(k))-thetaVett(k)) > 20*pi/180

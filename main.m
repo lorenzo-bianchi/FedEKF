@@ -1,7 +1,8 @@
 clc; clear; close all;
 
-for i = 1:1
-    rng(i);
+seeds = 7;
+for seed = seeds
+    rng(seed);
     
     DISEGNA = 0;
     GENERA = 1;
@@ -28,15 +29,6 @@ for i = 1:1
     
         stato0 = [0, 0, 0];
         ekfs(robot) = FedEkf(data, stato0, misureRange, sigmaDistanzaModello, sigmaPhi);
-    
-        if DISEGNA
-            figure(robot)
-        end
-    end
-    
-    if nRobot > 1 && DISEGNA
-        disp("Premi invio...")
-        pause
     end
     
     tic;
@@ -55,15 +47,34 @@ for i = 1:1
                 ekfs(robot).correction(misureRange);
             end
         end
-    
-        if DISEGNA && mod(k,5) == 1
-            disegna
-        end
     end
     DeltaTsim = toc;
     fprintf("Tempo impiegato: %f s:\n", toc);
+    
+    %% Animazione
+    if DISEGNA
+        for robot = 1:nRobot
+            figure(robot)
+        end
+    
+        if nRobot > 1
+            disp("Premi invio...")
+            pause
+        end
+        
+        for k = 1:nPassi
+            if mod(k,5) == 1
+                disegna
+            end
+        end
+    else
+        disegna
+        if length(seeds) > 1
+            fprintf("\tSeed %d:\n", seed);
+            pause
+        end
+    end
 end
-
 %% Calcolo distanze vere e stimate tag-tag e tag-robot (errori SLAM relativi)
 for robot = 1:nRobot
     xVett = percorsi(:, 1, robot);

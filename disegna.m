@@ -61,6 +61,7 @@ for robot = 1:nRobot
     % end
     
     axis equal
-    axis([0 2 0 2])
+    delta = 0.05*L;
+    axis([-delta L+delta -delta L+delta])
 end
 pause(0.001)

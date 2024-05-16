@@ -1,13 +1,18 @@
 data = struct();
 
-nPassi = 2000;
+nPassi = 6000;
+pruning = 1;
+stepStartPruning = 100;
+
+sigmaDistanza = 0.5; % std in m della misura di range
+sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla deviazione standard dell'errore di misura
 
 Nstep = 1; % passi tra una misura e la successiva
 nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
 possibiliPhi = linspace(-pi+2*pi/nPhi, pi, nPhi);
 sigmaPhi = 2*pi/(1.5*nPhi); %pi/(3*nPhi);
 
-L = 2; % lunghezza lato ambiente (quadrato)
+L = 5; % lunghezza lato ambiente (quadrato)
     
 % Caratteristiche robot: si assume di aver calibrato l'odometria per
 % l'errore sistematico ma ciò non impedisce di considerare che qualche
@@ -26,15 +31,18 @@ KLvera = KRvera;   % Costante KL errori Odometrici ruota sinistra: uL_e = N(uL, 
 KR = KRvera; %*1.01;
 KL = KLvera; %*1.01;
 
-sigmaDistanza = 0.05; % std in m della misura di range
-sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla deviazione standard dell'errore di misura
-
 % Possibili configurazioni dei landmark (o ancore o tag): cTag è una matrice dove 
 % la riga i-esima contiene le coordinate (x,y) del landmark i-esimo
+% cTag = [0.6 0.6;
+%         0.6 1.5;
+%         1.5 0.6;
+%         1.5 1.5];
 cTag = [0.6 0.6;
-        0.6 1.5;
-        1.5 0.6;
-        1.5 1.5];
+        4.2 4.2;
+        1.4 3.8;
+        2.5 3.5;
+        3.8 1.5;
+        2.0 2.0];
 [nTag, ~] = size(cTag);
 
 data.nPassi = nPassi;
@@ -42,6 +50,7 @@ data.nPhi = nPhi;
 data.L = L;
 data.possibiliPhi = possibiliPhi;
 data.sigmaPhi = sigmaPhi;
+data.cTag = cTag;
 data.nTag = nTag;
 
 data.d = d;
@@ -55,3 +64,6 @@ data.KR = KR;
 data.KL = KL;
 data.KRvera = KRvera;
 data.KLvera = KLvera;
+
+data.pruning = pruning;
+data.stepStartPruning = stepStartPruning;
