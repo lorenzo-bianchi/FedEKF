@@ -108,7 +108,7 @@ classdef FedEkf < handle
             x_r = obj.xHatSLAMmeno(1);
             y_r = obj.xHatSLAMmeno(2);
 
-            indMatCum = cumsum([1 obj.nPhiVett(1:end-1)]);
+            indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
     
             for indTag = 1:nTag
                 % Calcolo della stima a priori della posizione dell'ipotesi 
@@ -142,7 +142,7 @@ classdef FedEkf < handle
                     obj.H(indMat+indPhi, 1+ind0) = yTag_ij-y_r;
                     obj.H(indMat+indPhi, 2+ind0) = (xTag_ij-x_r)*cosPhi_ij+(yTag_ij-y_r)*sinPhi_ij;
                     obj.H(indMat+indPhi, 2+ind0+indPhi)= ((x_r-xTag_ij)*sinPhi_ij+(yTag_ij-y_r)*cosPhi_ij)*rho_i;
-                    obj.H(indMat+indPhi, :) = obj.H(indMat+indPhi,:)/misuraRange_ij;
+                    obj.H(indMat+indPhi, :) = obj.H(indMat+indPhi, :) / misuraRange_ij;
                 end
                 lambda_ij = probMisura_ij/sum(probMisura_ij);
                 
@@ -162,44 +162,46 @@ classdef FedEkf < handle
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
 
             % Pruning
-            change = false;
-            for indTag = 1:nTag
-                nPhi = obj.nPhiVett(indTag);
-                indPhi = 1;
-                while indPhi <= nPhi
-                    if obj.pesi(indTag, indPhi) < 0.00001/nPhi
-                        change = true;
-                        nPhi = nPhi - 1;
-
-                        temp = obj.pesi(indTag, indPhi+1:end);
-                        obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
-                        obj.pesi(indTag, end) = 0;
-
-                        obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
-                        obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
-                        obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
-
-                        ind0 = obj.xHatCumIndices(indTag+1);
-                        i = ind0 + 2 + indPhi;
-                        obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                        obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                        obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
-                    else
-                        indPhi = indPhi + 1;
+            if obj.data.pruning && obj.k > obj.data.stepStartPruning
+                change = false;
+                for indTag = 1:nTag
+                    nPhi = obj.nPhiVett(indTag);
+                    indPhi = 1;
+                    while indPhi <= nPhi
+                        if obj.pesi(indTag, indPhi) < 0.00001/nPhi
+                            change = true;
+                            nPhi = nPhi - 1;
+    
+                            temp = obj.pesi(indTag, indPhi+1:end);
+                            obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
+                            obj.pesi(indTag, end) = 0;
+    
+                            obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
+                            obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
+                            obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
+    
+                            ind0 = obj.xHatCumIndices(indTag+1);
+                            i = ind0 + 2 + indPhi;
+                            obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                            obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                            obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
+                        else
+                            indPhi = indPhi + 1;
+                        end
                     end
                 end
-            end
-            if change
-                nPhiTagNew = sum(obj.nPhiVett);
-                stateLenNew = sum(obj.xHatIndices)-1;
-
-                obj.innovazione = zeros(nPhiTagNew, 1);
+                if change
+                    nPhiTagNew = sum(obj.nPhiVett);
+                    stateLenNew = sum(obj.xHatIndices)-1;
     
-                obj.xHatSLAMmeno = zeros(stateLenNew, 1);
-                obj.F = eye(stateLenNew);
-                obj.W = zeros(stateLenNew, 2);
-                obj.H = zeros(nPhiTagNew, stateLenNew);
-                obj.Rs = zeros(nPhiTagNew, nPhiTagNew);
+                    obj.innovazione = zeros(nPhiTagNew, 1);
+        
+                    obj.xHatSLAMmeno = zeros(stateLenNew, 1);
+                    obj.F = eye(stateLenNew);
+                    obj.W = zeros(stateLenNew, 2);
+                    obj.H = zeros(nPhiTagNew, stateLenNew);
+                    obj.Rs = zeros(nPhiTagNew, nPhiTagNew);
+                end
             end
         end
     end
