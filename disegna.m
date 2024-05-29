@@ -8,7 +8,7 @@ for robot = 1:nRobot
     plot([0 0], [0 L], 'k', 'Linewidth', 2)
     plot([L L], [0 L], 'k', 'Linewidth', 2)
     for indTag = 1:nTag
-        % plot(cTag(indTag,1), cTag(indTag,2), 'rH');
+        text(cTag(indTag,1) + 0.2, cTag(indTag,2), num2str(indTag), 'FontSize', 12);
         plot(cTag(indTag,1), cTag(indTag,2), 'rh', 'Linewidth', 2, 'MarkerSize', 12);
     end
 

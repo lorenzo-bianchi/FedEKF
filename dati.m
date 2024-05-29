@@ -2,10 +2,13 @@ data = struct();
 
 nPassi = 6000;
 pruning = 1;
-stepStartPruning = 100;
+stepStartPruning = 300;
+sharing = 0;
+stepStartSharing = 600;
 
 sigmaDistanza = 0.5; % std in m della misura di range
 sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla deviazione standard dell'errore di misura
+sigmaMisuraMedia = 1.0;
 
 Nstep = 1; % passi tra una misura e la successiva
 nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
@@ -33,10 +36,6 @@ KL = KLvera; %*1.01;
 
 % Possibili configurazioni dei landmark (o ancore o tag): cTag è una matrice dove 
 % la riga i-esima contiene le coordinate (x,y) del landmark i-esimo
-% cTag = [0.6 0.6;
-%         0.6 1.5;
-%         1.5 0.6;
-%         1.5 1.5];
 cTag = [0.6 0.6;
         4.2 4.2;
         1.4 3.8;
@@ -52,6 +51,10 @@ data.possibiliPhi = possibiliPhi;
 data.sigmaPhi = sigmaPhi;
 data.cTag = cTag;
 data.nTag = nTag;
+
+data.sigmaDistanzaModello = sigmaDistanzaModello;
+data.sigmaPhi = sigmaPhi;
+data.sigmaMisuraMedia = sigmaMisuraMedia;
 
 data.d = d;
 data.deltaR = deltaR;

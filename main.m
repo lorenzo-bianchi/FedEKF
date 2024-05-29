@@ -1,14 +1,17 @@
 clc; clear; close all;
 
-seeds = 7;
+seeds = 9;
 for seed = seeds
     rng(seed);
-    
-    DISEGNA = 0;
+    fprintf("Seed %d:\n", seed);
+
+    DISEGNA_ANIMAZIONE = 0;
+    DISEGNA_ULTIMO = 0;
+    DISEGNA_PLOT = 0;
     GENERA = 1;
     displayErrori = 1;
     
-    nRobot = 1;
+    nRobot = 4;
     
     dati % definisce alcune costanti del problema
     
@@ -28,9 +31,13 @@ for seed = seeds
         misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
     
         stato0 = [0, 0, 0];
-        ekfs(robot) = FedEkf(data, stato0, misureRange, sigmaDistanzaModello, sigmaPhi);
+        ekfs(robot) = FedEkf(data, robot, stato0, misureRange);
     end
     
+    sharedInfoProto.indici = [0 0]';
+    sharedInfoProto.tags = zeros(2, nTag);
+    sharedInfoArray(nRobot) = sharedInfoProto;
+
     tic;
     for k = 2:nPassi
         for robot = 1:nRobot
@@ -46,13 +53,88 @@ for seed = seeds
                 misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
                 ekfs(robot).correction(misureRange);
             end
+            
+            % Salva le coordinate cartesiane dei tag
+            ekfs(robot).save_tags();
+
+            % Calcola informazioni per gli altri robot
+            if sharing && k > stepStartSharing
+                sharedInfoArray(robot) = ekfs(robot).data_to_share();
+            end
+        end
+
+        % CORREZIONE con altre misure
+        if sharing && k > stepStartSharing
+            for robot = 1:nRobot
+                ekfs(robot).correction_shared(sharedInfoArray);
+            end
         end
     end
-    DeltaTsim = toc;
     fprintf("Tempo impiegato: %f s:\n", toc);
+
+    %% Calcolo distanze vere e stimate tag-tag e tag-robot (errori SLAM relativi)
+    erroreAssolutoRobot = zeros(1, nRobot);
+    distanzeRobotVere = zeros(nRobot, nTag);
+    distanzeRobotStimate = zeros(nRobot, nTag);
+    distanzeInterTagVere = zeros(nRobot, nTag*(nTag-1)/2);
+    distanzeInterTagStimate = zeros(nRobot, nTag*(nTag-1)/2);
+    erroriAssolutiTag = zeros(nRobot, nTag);
+
+    for robot = 1:nRobot
+        xVett = percorsi(:, 1, robot);
+        yVett = percorsi(:, 2, robot);
     
+        distanzeRobotVere(robot, :) = sqrt((xVett(end)-cTag(:,1)).^2+(yVett(end)-cTag(:,2)).^2)';
+
+        x_r = ekfs(robot).xHatSLAM(1, end);
+        y_r = ekfs(robot).xHatSLAM(2, end);
+        xHatTag = ekfs(robot).xHatTagStoria(:, end);
+        yHatTag = ekfs(robot).yHatTagStoria(:, end);
+        distanzeRobotStimate(robot, :) = sqrt((x_r-xHatTag).^2+(y_r-yHatTag).^2);
+        
+        indice = 0;
+        for indTag = 1:nTag-1
+            for jndTag = indTag+1:nTag
+                indice = indice + 1;
+                distanzeInterTagVere(robot, indice) = sqrt((cTag(indTag,1)-cTag(jndTag,1)).^2+(cTag(indTag,2)-cTag(jndTag,2)).^2);
+                distanzeInterTagStimate(robot, indice) = sqrt((xHatTag(indTag)-xHatTag(jndTag)).^2+(yHatTag(indTag)-yHatTag(jndTag)).^2);
+            end
+        end
+    
+        posHatTagLoc = [xHatTag'; yHatTag'; ones(1, nTag)];
+        posHatTagGlob = (TsGL(:, :, robot)*posHatTagLoc)';
+        
+        erroriAssolutiTag(robot, :) = sqrt( (posHatTagGlob(:, 1)-cTag(:, 1)).^2+(posHatTagGlob(:, 2)-cTag(:, 2)).^2 );
+    
+        posRobLoc = [x_r; y_r; 1];
+        posRobGlob = TsGL(:, :, robot)*posRobLoc;
+        erroreAssolutoRobot(robot) = sqrt((posRobGlob(1)-xVett(end))^2+(posRobGlob(2)-yVett(end))^2);
+        
+        if displayErrori
+            fprintf("Robot %d:\n", robot);
+            fprintf("\tDistanze robot-tag vere: ")
+            fprintf("%.3f ", distanzeRobotVere(robot, :));
+            fprintf("\n");
+            fprintf("\tDistanze robot-tag stimate: ")
+            fprintf("%.3f ", distanzeRobotStimate(robot, :));
+            fprintf("\n");
+            fprintf("\tDistanze tag-tag vere: ")
+            fprintf("%.3f ", distanzeInterTagVere(robot, :));
+            fprintf("\n");
+            fprintf("\tDistanze tag-tag stimate: ")
+            fprintf("%.3f ", distanzeInterTagStimate(robot, :));
+            fprintf("\n");
+            fprintf("\tErrori assoluti tag: ")
+            fprintf("%.3f ", erroriAssolutiTag(robot, :));
+            fprintf("\n");
+            fprintf("\tErrore assoluto robot: ")
+            fprintf("%.3f ", erroreAssolutoRobot(robot));
+            fprintf("\n\n");
+        end
+    end
+
     %% Animazione
-    if DISEGNA
+    if DISEGNA_ANIMAZIONE
         for robot = 1:nRobot
             figure(robot)
         end
@@ -67,91 +149,70 @@ for seed = seeds
                 disegna
             end
         end
-    else
+    elseif DISEGNA_ULTIMO
         disegna
         if length(seeds) > 1
-            fprintf("\tSeed %d:\n", seed);
             pause
         end
     end
 end
-%% Calcolo distanze vere e stimate tag-tag e tag-robot (errori SLAM relativi)
-for robot = 1:nRobot
-    xVett = percorsi(:, 1, robot);
-    yVett = percorsi(:, 2, robot);
 
-    distanzeRobotVere = sqrt((xVett(end)-cTag(:,1)).^2+(yVett(end)-cTag(:,2)).^2)';
-    distanzeRobotStimate = zeros(1,nTag);
-    x_r = ekfs(robot).xHatSLAM(1,end);
-    y_r = ekfs(robot).xHatSLAM(2,end);
-    xHatTag = zeros(nTag,1);
-    yHatTag = zeros(nTag,1);
-    for indTag = 1:nTag
-        ind0 = ekfs(robot).xHatCumIndices(indTag+1);
+%% Grafici
+if DISEGNA_PLOT
+    colors = {'#0072BD', '#D95319', '#EDB120', '#7E2F8E', '#77AC30', '#4DBEEE', '#A2142F'};
+    names = {'Tag1', 'Tag2', 'Tag3', 'Tag4', 'Tag5', 'Tag6', 'Tag7'};
+    t_min = 1;
+    t_max = 6000;
+    time = t_min:t_max;
 
-        x_i   = ekfs(robot).xHatSLAM(0+ind0, k);
-        y_i   = ekfs(robot).xHatSLAM(1+ind0, k);
-        rho_i = ekfs(robot).xHatSLAM(2+ind0, k);
-        x_ti = 0;
-        y_ti = 0;
+    for robot = 1:nRobot
+        % Errori assoluti
+        figure
 
-        nPhi = ekfs(robot).nPhiVett(indTag);
-        for indPhi = 1:nPhi
-            phi_ij = ekfs(robot).xHatSLAM(2+ind0+indPhi, end);
-            cosPhi_ij = cos(phi_ij);
-            sinPhi_ij = sin(phi_ij);
-            xTag_ij = x_i + rho_i*cosPhi_ij;
-            yTag_ij = y_i + rho_i*sinPhi_ij;
-            x_ti = x_ti + xTag_ij*ekfs(robot).pesi(indTag, indPhi);
-            y_ti = y_ti + yTag_ij*ekfs(robot).pesi(indTag, indPhi);
+        x = ekfs(robot).xHatTagStoria(:, time);
+        y = ekfs(robot).yHatTagStoria(:, time);
+
+        hAx1 = axes('Position', [0.05, 0.1, 0.4, 0.8]);
+        for tag = 1:nTag
+            posLoc = [x(tag, :); y(tag, :); ones(1, length(time))];
+            posGlob = TsGL(:, :, robot)*posLoc;
+            plot(time, posGlob(1, :), 'LineWidth', 1.5, 'Color', colors{tag}, 'DisplayName', names{tag})
+            hold on
+            plot(time, cTag(tag, 1)*ones(1, length(time)), '--', 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', '')
         end
-        xHatTag(indTag) = x_ti;
-        yHatTag(indTag) = y_ti;
-        distanzeRobotStimate(indTag) = sqrt((x_r-x_ti)^2+(y_r-y_ti)^2);
-    end
-    
-    distanzeInterTagVere = zeros(1, nTag*(nTag-1)/2);
-    distanzeInterTagStimate = zeros(1, nTag*(nTag-1)/2);
-    indice = 0;
-    for indTag = 1:nTag-1
-        for jndTag = indTag+1:nTag
-            indice = indice + 1;
-            distanzeInterTagVere(indice) = sqrt((cTag(indTag,1)-cTag(jndTag,1)).^2+(cTag(indTag,2)-cTag(jndTag,2)).^2);
-            distanzeInterTagStimate(indice) = sqrt((xHatTag(indTag)-xHatTag(jndTag)).^2+(yHatTag(indTag)-yHatTag(jndTag)).^2);
+        if pruning
+            xline(stepStartPruning, '--k', 'LineWidth', 1, 'DisplayName', 'Pruning');
         end
-    end
+        if sharing
+            xline(stepStartSharing, '-.k', 'LineWidth', 1, 'DisplayName', 'Sharing');
+        end
 
-    erroriAssolutiTag = zeros(1,nTag);
-    posHatTagLoc = [xHatTag'; yHatTag'; ones(1, nTag)];
-    posHatTagGlob = TsGL(:, :, robot)*posHatTagLoc;
-    
-    for indTag = 1:nTag
-        erroriAssolutiTag(indTag) = sqrt( (posHatTagGlob(1,indTag)-cTag(indTag,1))^2+(posHatTagGlob(2,indTag)-cTag(indTag,2))^2 );
-    end
+        grid on
+        xlabel('simulation step');
+        ylabel('x [m]');
+        legend('location', 'southeast');
 
-    posRobLoc = [x_r; y_r; 1];
-    posRobGlob = TsGL(:, :, robot)*posRobLoc;
-    erroreAssolutoRobot = sqrt((posRobGlob(1)-xVett(end))^2+(posRobGlob(2)-yVett(end))^2);
-    
-    if displayErrori
-        fprintf("Robot %d:\n", robot);
-        fprintf("\tDistanze vere: ")
-        fprintf("%.3f ", distanzeRobotVere);
-        fprintf("\n");
-        fprintf("\tDistanze stimate: ")
-        fprintf("%.3f ", distanzeRobotStimate);
-        fprintf("\n");
-        fprintf("\tDistanze inter-tag vere: ")
-        fprintf("%.3f ", distanzeInterTagVere);
-        fprintf("\n");
-        fprintf("\tDistanze inter-tag stimate: ")
-        fprintf("%.3f ", distanzeInterTagStimate);
-        fprintf("\n");
-        fprintf("\tErrori assoluti tag: ")
-        fprintf("%.3f ", erroriAssolutiTag);
-        fprintf("\n");
-        fprintf("\tErrore assoluto robot: ")
-        fprintf("%.3f ", erroreAssolutoRobot);
-        fprintf("\n");
+        hAx2 = axes('Position', [0.55, 0.1, 0.4, 0.8]);
+        for tag = 1:nTag
+            posLoc = [x(tag, :); y(tag, :); ones(1, length(time))];
+            posGlob = TsGL(:, :, robot)*posLoc;
+            plot(time, posGlob(2, :), 'LineWidth', 1.5, 'Color', colors{tag}, 'DisplayName', names{tag})
+            hold on
+            plot(time, cTag(tag, 2)*ones(1, length(time)), '--', 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', '')
+        end
+        if pruning
+            xline(stepStartPruning, '--k', 'LineWidth', 1, 'DisplayName', 'Pruning');
+        end
+        if sharing
+            xline(stepStartSharing, '-.k', 'LineWidth', 1, 'DisplayName', 'Sharing');
+        end
+
+        grid on
+        xlabel('simulation step');
+        ylabel('y [m]');
+        legend('location', 'southeast');
+        sgtitle(sprintf('Absolute errors robot %d', robot))
+        
+        set(gcf, 'position', [100, 100, 1500, 600]);
     end
 end
