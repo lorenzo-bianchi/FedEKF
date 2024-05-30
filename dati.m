@@ -1,9 +1,10 @@
 data = struct();
 
-nPassi = 6000;
+nPassi = 20000;
 pruning = 1;
+minZerosStartPruning = 5;
 stepStartPruning = 300;
-sharing = 0;
+sharing = 1;
 stepStartSharing = 600;
 
 sigmaDistanza = 0.5; % std in m della misura di range
@@ -69,4 +70,5 @@ data.KRvera = KRvera;
 data.KLvera = KLvera;
 
 data.pruning = pruning;
-data.stepStartPruning = stepStartPruning;
+data.minZerosStartPruning = minZerosStartPruning;
+data.stepStartPruning = stepStartPruning ;

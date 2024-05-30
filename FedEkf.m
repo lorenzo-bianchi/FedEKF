@@ -29,6 +29,9 @@ classdef FedEkf < handle
         innovazioneY
         RsX
         RsY
+        startPruning
+        stepStartPruning 
+        minZerosStartPruning
     end
     
     methods
@@ -85,6 +88,10 @@ classdef FedEkf < handle
 
             obj.xHatTagStoria = zeros(nTag, nPassi);
             obj.yHatTagStoria = zeros(nTag, nPassi);
+
+            obj.startPruning = zeros(1, nTag);
+            obj.minZerosStartPruning = data.minZerosStartPruning;
+            obj.stepStartPruning = data.stepStartPruning;
         end
         
         %
@@ -185,9 +192,33 @@ classdef FedEkf < handle
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
 
             % Pruning
-            if obj.data.pruning && obj.k > obj.data.stepStartPruning
+            if obj.data.pruning && obj.k >= obj.stepStartPruning
                 change = false;
+
+                if any(obj.startPruning == 0)
+                    for indTag = 1:nTag
+                        if obj.startPruning(indTag) > 0
+                            continue
+                        end
+
+                        nPhi = obj.nPhiVett(indTag);
+                        nZeri = 0;
+                        for indPhi = 1:nPhi
+                            if obj.pesi(indTag, indPhi) < 0.00001/nPhi
+                                nZeri = nZeri + 1;
+                            end
+                        end
+                        if nZeri >= obj.minZerosStartPruning
+                            obj.startPruning(indTag) = obj.k;
+                        end
+                    end
+                end
+
                 for indTag = 1:nTag
+                    if obj.startPruning(indTag) == 0
+                        continue
+                    end
+
                     nPhi = obj.nPhiVett(indTag);
                     indPhi = 1;
                     while indPhi <= nPhi

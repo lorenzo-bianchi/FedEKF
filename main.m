@@ -7,7 +7,7 @@ for seed = seeds
 
     DISEGNA_ANIMAZIONE = 0;
     DISEGNA_ULTIMO = 0;
-    DISEGNA_PLOT = 0;
+    DISEGNA_PLOT = 1;
     GENERA = 1;
     displayErrori = 1;
     
@@ -104,7 +104,7 @@ for seed = seeds
         posHatTagLoc = [xHatTag'; yHatTag'; ones(1, nTag)];
         posHatTagGlob = (TsGL(:, :, robot)*posHatTagLoc)';
         
-        erroriAssolutiTag(robot, :) = sqrt( (posHatTagGlob(:, 1)-cTag(:, 1)).^2+(posHatTagGlob(:, 2)-cTag(:, 2)).^2 );
+        erroriAssolutiTag(robot, :) = sqrt((posHatTagGlob(:, 1)-cTag(:, 1)).^2+(posHatTagGlob(:, 2)-cTag(:, 2)).^2);
     
         posRobLoc = [x_r; y_r; 1];
         posRobGlob = TsGL(:, :, robot)*posRobLoc;
@@ -112,20 +112,35 @@ for seed = seeds
         
         if displayErrori
             fprintf("Robot %d:\n", robot);
-            fprintf("\tDistanze robot-tag vere: ")
-            fprintf("%.3f ", distanzeRobotVere(robot, :));
+            % fprintf("\tDistanze robot-tag vere: ")
+            % fprintf("%.3f ", distanzeRobotVere(robot, :));
+            % fprintf("\n");
+            % fprintf("\tDistanze robot-tag stimate: ")
+            % fprintf("%.3f ", distanzeRobotStimate(robot, :));
+            % fprintf("\n");
+            fprintf("\tDifferenza distanze robot-tag: ")
+            fprintf("%.3f ", abs(distanzeRobotVere(robot, :) - distanzeRobotStimate(robot, :)));
             fprintf("\n");
-            fprintf("\tDistanze robot-tag stimate: ")
-            fprintf("%.3f ", distanzeRobotStimate(robot, :));
+            fprintf("\tMedia differenza distanze robot-tag: ")
+            fprintf("%.3f ", mean(abs(distanzeRobotVere(robot, :) - distanzeRobotStimate(robot, :))));
             fprintf("\n");
-            fprintf("\tDistanze tag-tag vere: ")
-            fprintf("%.3f ", distanzeInterTagVere(robot, :));
+            % fprintf("\tDistanze tag-tag vere: ")
+            % fprintf("%.3f ", distanzeInterTagVere(robot, :));
+            % fprintf("\n");
+            % fprintf("\tDistanze tag-tag stimate: ")
+            % fprintf("%.3f ", distanzeInterTagStimate(robot, :));
+            % fprintf("\n");
+            % fprintf("\tDifferenza distanze tag-tag: ")
+            % fprintf("%.3f ", abs(distanzeInterTagVere(robot, :) - distanzeInterTagStimate(robot, :)));
+            % fprintf("\n");
+            fprintf("\tMedia differenza distanze tag-tag: ")
+            fprintf("%.3f ", mean(abs(distanzeInterTagVere(robot, :) - distanzeInterTagStimate(robot, :))));
             fprintf("\n");
-            fprintf("\tDistanze tag-tag stimate: ")
-            fprintf("%.3f ", distanzeInterTagStimate(robot, :));
-            fprintf("\n");
-            fprintf("\tErrori assoluti tag: ")
-            fprintf("%.3f ", erroriAssolutiTag(robot, :));
+            % fprintf("\tErrori assoluti tag: ")
+            % fprintf("%.3f ", erroriAssolutiTag(robot, :));
+            % fprintf("\n");
+            fprintf("\tMedia errori assoluti tag: ")
+            fprintf("%.3f ", mean(erroriAssolutiTag(robot, :)));
             fprintf("\n");
             fprintf("\tErrore assoluto robot: ")
             fprintf("%.3f ", erroreAssolutoRobot(robot));
@@ -162,7 +177,7 @@ if DISEGNA_PLOT
     colors = {'#0072BD', '#D95319', '#EDB120', '#7E2F8E', '#77AC30', '#4DBEEE', '#A2142F'};
     names = {'Tag1', 'Tag2', 'Tag3', 'Tag4', 'Tag5', 'Tag6', 'Tag7'};
     t_min = 1;
-    t_max = 6000;
+    t_max = nPassi;
     time = t_min:t_max;
 
     for robot = 1:nRobot
@@ -214,5 +229,21 @@ if DISEGNA_PLOT
         sgtitle(sprintf('Absolute errors robot %d', robot))
         
         set(gcf, 'position', [100, 100, 1500, 600]);
+
+        % Grafici tag
+        cTagHat = [ekfs(robot).xHatTagStoria(:, end) ekfs(robot).yHatTagStoria(:, end)];
+        [R, t] = icp2D(cTag, cTagHat);
+        cTagHatTransformed = (R * cTag' + t)';
+        figure;
+        plot(cTag(:,1), cTag(:,2), 'bo', 'DisplayName', 'cTag (global)', 'MarkerSize', 7, 'LineWidth', 2);
+        hold on;
+        plot(cTagHat(:,1), cTagHat(:,2), 'r+', 'DisplayName', 'cTagHat (local)', 'MarkerSize', 7, 'LineWidth', 2);
+        plot(cTagHatTransformed(:,1), cTagHatTransformed(:,2), 'kx', 'DisplayName', 'cTagHatTransformed', 'MarkerSize', 7, 'LineWidth', 2);
+        legend;
+        title(sprintf('Tags alignment robot %d', robot));
+        xlabel('x [m]');
+        ylabel('y [m]');
+        axis equal;
+        grid on;
     end
 end
