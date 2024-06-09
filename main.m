@@ -55,7 +55,7 @@ for seed = seeds
             end
             
             % Salva le coordinate cartesiane dei tag
-            ekfs(robot).save_tags();
+            ekfs(robot).save_tags(false);
 
             % Calcola informazioni per gli altri robot
             if sharing && k > stepStartSharing

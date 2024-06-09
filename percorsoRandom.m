@@ -33,7 +33,7 @@ function percorso = percorsoRandom(data, GENERA)
         k = 1;
         while k < nPassi
             [lato, distanza] = distanzaBordo(xVett(k), yVett(k), thetaVett(k), data.L);
-            distanzaTag = Inf; %sqrt((xVett(k)-cTag(1,1))^2+(yVett(k)-cTag(1,2))^2);
+            distanzaTag = 1e10; %sqrt((xVett(k)-cTag(1,1))^2+(yVett(k)-cTag(1,2))^2);
             % if distanzaTag < 0.2
             %     if abs(atan2(cTag(1,2)-yVett(k), cTag(1,1)-xVett(k))-thetaVett(k)) > 20*pi/180
             %         distanzaTag = Inf;

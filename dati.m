@@ -7,7 +7,7 @@ stepStartPruning = 0;
 sharing = 0;
 stepStartSharing = 600;
 
-sigmaDistanza = 0.5; % std in m della misura di range
+sigmaDistanza = 0.05; % std in m della misura di range
 sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla deviazione standard dell'errore di misura
 sigmaMisuraMedia = 1.0;
 

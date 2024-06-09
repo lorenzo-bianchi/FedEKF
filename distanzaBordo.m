@@ -31,7 +31,7 @@ function [lato, distanza] = distanzaBordo(Xt, Yt, Thetat, L)
        P2x = M(lato,3);   
        P2y = M(lato,4);   
        if P1x == P2x
-           n(lato) = Inf;
+           n(lato) = 1e9;
            q(lato) = P1x;  % in questo caso il coefficiente q ricorda la x dell'equazione x = q
        else
            n(lato) = (P2y-P1y)/(P2x-P1x); % coefficiente angolare lato
@@ -41,7 +41,7 @@ function [lato, distanza] = distanzaBordo(Xt, Yt, Thetat, L)
     
     
     % la lettura minima dal laser al perimetro (alla fine deve dare il valore ok)
-    letturaMin = Inf;  
+    letturaMin = 1e9;  
     latoMin = 0;
     
     % coordinate del laser
@@ -55,10 +55,10 @@ function [lato, distanza] = distanzaBordo(Xt, Yt, Thetat, L)
     
     % Calcolo coordinate intersezione del raggio del laser con i vari lati
     for lato = 1:numSegmenti
-        if n(lato) < Inf  % lato non verticale
+        if n(lato) < 1e9  % lato non verticale
             if abs(tan(Thetat) - n(lato)) < 0.0001 % raggio laser parallelo a lato
-                  XpBordo(lato) = Inf;
-                  YpBordo(lato) = Inf;                  
+                  XpBordo(lato) = 1e9;
+                  YpBordo(lato) = 1e9;                  
             else
                   XpBordo(lato) = (Xt*tan(Thetat)-Yt+q(lato))/(tan(Thetat)-n(lato));
                   YpBordo(lato) = ((n(lato)*Xt+q(lato))*tan(Thetat)-n(lato)*Yt)/(tan(Thetat)-n(lato));
@@ -66,7 +66,7 @@ function [lato, distanza] = distanzaBordo(Xt, Yt, Thetat, L)
         else     % lato verticale
             XpBordo(lato) = q(lato);
             if abs(cos(Thetat)) < 0.0001  % raggio laser parallelo a lato verticale
-                YpBordo(lato) = Inf;
+                YpBordo(lato) = 1e9;
                 % disp('raggio laser parallelo a lato verticale');                
             else 
                 YpBordo(lato) = Yt + (q(lato)-Xt)*tan(Thetat);                  
