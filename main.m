@@ -7,7 +7,7 @@ for seed = seeds
 
     DISEGNA_ANIMAZIONE = 0;
     DISEGNA_ULTIMO = 0;
-    DISEGNA_PLOT = 1;
+    DISEGNA_PLOT = 0;
     GENERA = 1;
     displayErrori = 1;
     
