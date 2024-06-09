@@ -1,10 +1,10 @@
 data = struct();
 
-nPassi = 20000;
+nPassi = 6000;
 pruning = 1;
 minZerosStartPruning = 5;
-stepStartPruning = 300;
-sharing = 1;
+stepStartPruning = 0;
+sharing = 0;
 stepStartSharing = 600;
 
 sigmaDistanza = 0.5; % std in m della misura di range

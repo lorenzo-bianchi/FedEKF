@@ -1,6 +1,6 @@
 clc; clear; close all;
 
-seeds = 9;
+seeds = 7;
 for seed = seeds
     rng(seed);
     fprintf("Seed %d:\n", seed);
