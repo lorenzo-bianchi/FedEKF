@@ -3,7 +3,7 @@ data = struct();
 nPassi = 6000;
 pruning = 1;
 minZerosStartPruning = 5;
-stepStartPruning = 0;
+stepStartPruning = 300;
 sharing = 0;
 stepStartSharing = 600;
 
