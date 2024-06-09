@@ -12,20 +12,20 @@ sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla 
 sigmaMisuraMedia = 1.0;
 
 Nstep = 1; % passi tra una misura e la successiva
-nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
+nPhi = 8; % numero ipotesi angolo (si puï¿½ poi variare in funzione della distanza misurata)
 possibiliPhi = linspace(-pi+2*pi/nPhi, pi, nPhi);
 sigmaPhi = 2*pi/(1.5*nPhi); %pi/(3*nPhi);
 
 L = 5; % lunghezza lato ambiente (quadrato)
     
 % Caratteristiche robot: si assume di aver calibrato l'odometria per
-% l'errore sistematico ma ciò non impedisce di considerare che qualche
-% erroretto c'è rimasto...
+% l'errore sistematico ma ciï¿½ non impedisce di considerare che qualche
+% erroretto c'ï¿½ rimasto...
 dVera = 0.26; % distanza presunta tra le due ruote
 deltaRvera = 1; % fattore collegato con diametro ruota destra
 deltaLvera = 1; % fattore collegato con diametro ruota sinistra
 % ERRORE SISTEMATICO
-d = dVera; %*1.001; % distanza vera tra le due ruote, se d = dVera non c'è errore sistematico
+d = dVera; %*1.001; % distanza vera tra le due ruote, se d = dVera non c'ï¿½ errore sistematico
 deltaR = deltaRvera; %*1.001; % errore sistematico sulla ruota destra
 deltaL = deltaLvera; %*1.001; % errore sistematico sulla ruota sinistra
 % COSTANTI ERRORE NON SISTEMATICO
@@ -35,7 +35,7 @@ KLvera = KRvera;   % Costante KL errori Odometrici ruota sinistra: uL_e = N(uL, 
 KR = KRvera; %*1.01;
 KL = KLvera; %*1.01;
 
-% Possibili configurazioni dei landmark (o ancore o tag): cTag è una matrice dove 
+% Possibili configurazioni dei landmark (o ancore o tag): cTag ï¿½ una matrice dove 
 % la riga i-esima contiene le coordinate (x,y) del landmark i-esimo
 cTag = [0.6 0.6;
         4.2 4.2;
