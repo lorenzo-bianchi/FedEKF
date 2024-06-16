@@ -12,8 +12,8 @@ for robot = 1:nRobot
         plot(cTag(indTag,1), cTag(indTag,2), 'rh', 'Linewidth', 2, 'MarkerSize', 12);
     end
 
-    xVett = percorsi(:, 1, robot);
-    yVett = percorsi(:, 2, robot);
+    xVett = percorsi(1:nPassi, 1, robot);
+    yVett = percorsi(1:nPassi, 2, robot);
 
     plot(xVett, yVett, ':', 'Linewidth', 1)    % traiettoria
     plot(xVett(1), yVett(1), 'k^', 'Linewidth', 2)  % pos iniziale
@@ -47,20 +47,16 @@ for robot = 1:nRobot
             y_ti = y_ti + yTag_ij*ekfs(robot).pesi(indTag, indPhi);
             posLoc = [xTag_ij, yTag_ij, 1]';
             posGlob = TsGL(:, :, robot)*posLoc;
-            plot(posGlob(1), posGlob(2), 'g.', 'MarkerSize', max(1, ceil(20*ekfs(robot).pesi(indTag,indPhi))))
+            plot(posGlob(1), posGlob(2), 'b.', 'MarkerSize', max(7, ceil(20*ekfs(robot).pesi(indTag,indPhi))))
+            text(posGlob(1) - 0.2, posGlob(2), num2str(indTag), 'FontSize', 12);
         end
         posLoc = [x_ti, y_ti, 1]';
         posGlob = TsGL(:, :, robot)*posLoc;
         plot(posGlob(1), posGlob(2), '*') % posizione media stimata tag
     end
-    % for indTag = 1:nTag,
-    %     if k<nPassi,
-    %         figure(2+indTag)
-    %         bar(pesi(indTag,:))
-    %     end
-    % end
-    
+
     axis equal
+    grid on
     delta = 0.05*L;
     axis([-delta L+delta -delta L+delta])
 end

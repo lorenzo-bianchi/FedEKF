@@ -8,6 +8,8 @@ classdef FedEkf < handle
         xHatSLAM
         xHatTagStoria
         yHatTagStoria
+        xHatTagSigmaStoria
+        yHatTagSigmaStoria
         P
         Pmeno
         Ptag
@@ -32,6 +34,9 @@ classdef FedEkf < handle
         startPruning
         stepStartPruning 
         minZerosStartPruning
+        varX
+        varY
+        covXY
     end
     
     methods
@@ -88,10 +93,16 @@ classdef FedEkf < handle
 
             obj.xHatTagStoria = zeros(nTag, nPassi);
             obj.yHatTagStoria = zeros(nTag, nPassi);
+            obj.xHatTagSigmaStoria = zeros(1, nPassi);
+            obj.yHatTagSigmaStoria = zeros(1, nPassi);
 
             obj.startPruning = zeros(1, nTag);
             obj.minZerosStartPruning = data.minZerosStartPruning;
             obj.stepStartPruning = data.stepStartPruning;
+
+            obj.varX = zeros(1, nTag);
+            obj.varY = zeros(1, nTag);
+            obj.covXY = zeros(1, nTag);
         end
         
         %
@@ -243,6 +254,41 @@ classdef FedEkf < handle
                             indPhi = indPhi + 1;
                         end
                     end
+
+                    ind0 = obj.xHatCumIndices(indTag+1);
+                    if nPhi == 2
+                        phi1 = obj.xHatSLAMmeno(2+ind0+1);
+                        phi2 = obj.xHatSLAMmeno(2+ind0+2);
+
+                        peso1 = obj.pesi(indTag, 1);
+                        peso2 = obj.pesi(indTag, 2);
+
+                        min_w = 0.9;
+                        w = max(min_w, -(1-min_w)/6000*obj.k+1); 
+                        if  max(peso1, peso2) > w && abs(phi1-phi2) < 5*pi/180
+                            change = true;
+
+                            if peso1 > peso2
+                                indPhi = 2;
+                            else
+                                indPhi = 1;
+                            end
+
+                            temp = obj.pesi(indTag, indPhi+1:end);
+                            obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
+                            obj.pesi(indTag, end) = 0;
+
+                            obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
+                            obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
+                            obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
+
+                            ind0 = obj.xHatCumIndices(indTag+1);
+                            i = ind0 + 2 + indPhi;
+                            obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                            obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                            obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
+                        end
+                    end
                 end
                 if change
                     nPhiTagNew = sum(obj.nPhiVett);
@@ -267,7 +313,7 @@ classdef FedEkf < handle
         end
     
         %
-        function [obj] = save_tags(obj)
+        function [obj] = save_tags(obj, save_vars)
             nTag = obj.data.nTag;
             for indTag = 1:nTag
                 nPhi = obj.nPhiVett(indTag);
@@ -289,14 +335,54 @@ classdef FedEkf < handle
 
                     xTagMediato = xTagMediato + xTag_ij*pesoTag;
                     yTagMediato = yTagMediato + yTag_ij*pesoTag;
-                end  
+                end
                 obj.xHatTagStoria(indTag, obj.k+1) = xTagMediato;
                 obj.yHatTagStoria(indTag, obj.k+1) = yTagMediato;
+
+                if save_vars
+                    ind_x = 0+ind0;
+                    ind_y = 1+ind0;
+                    ind_r = 2+ind0;
+                    ind_p = 3+ind0;
+
+                    varXi  = obj.P(ind_x, ind_x);
+                    varYi  = obj.P(ind_y, ind_y);
+                    varRho = obj.P(ind_r, ind_r);
+                    varPhi = obj.P(ind_p, ind_p);
+
+                    covXiYi   = obj.P(ind_x, ind_y);
+                    covXRho   = obj.P(ind_x, ind_r);
+                    covXPhi   = obj.P(ind_x, ind_p);
+                    covYRho   = obj.P(ind_y, ind_r);
+                    covYPhi   = obj.P(ind_y, ind_p);
+                    covRhoPhi = obj.P(ind_r, ind_p);
+
+                    obj.varX(indTag) = varXi + cosPhi_ij^2 * varRho + rho_i^2 * sinPhi_ij^2 * varPhi + ...
+                                       2*cosPhi_ij*covXRho - 2*rho_i*sinPhi_ij*covXPhi - 2*rho_i*cosPhi_ij*sinPhi_ij*covRhoPhi;
+
+                    obj.varY(indTag) = varYi + sinPhi_ij^2 * varRho + rho_i^2 * cosPhi_ij^2 * varPhi + ...
+                                       2*sinPhi_ij*covYRho + 2*rho_i*cosPhi_ij*covYPhi + 2*rho_i*cosPhi_ij*sinPhi_ij*covRhoPhi;
+                    % all'inizio c'era - 2*rho_i*cosPhi_ij*sinPhi_ij*covRhoPhi
+
+                    obj.covXY(indTag) = 0;
+                                       %covXiYi + cosPhi_ij*sinPhi_ij*varRho - rho_i^2*sinPhi_ij*cosPhi_ij * varPhi + ...
+                                       %cosPhi_ij*sinPhi_ij*covXRho - rho_i^2*sinPhi_ij*cosPhi_ij*covXPhi + ...
+                                       %cosPhi_ij*sinPhi_ij*covYRho - rho_i^2*sinPhi_ij*cosPhi_ij*covYPhi + ...
+                                       %cosPhi_ij*sinPhi_ij*covRhoPhi;
+
+                    sigma = [obj.varX(indTag) obj.covXY(indTag);
+                             obj.covXY(indTag) obj.varY(indTag)];
+                    if any(eig(sigma) < 0)
+                        3/0
+                    end
+                end
             end
         end
 
         %
         function structCondivisa = data_to_share(obj)
+            nTag = obj.data.nTag;
+
             % Trova id dei due landmark più lontani
             tags = [obj.xHatTagStoria(:, obj.k+1) obj.yHatTagStoria(:, obj.k+1)]';
             chull = convhull(tags(1, :), tags(2, :));
@@ -329,11 +415,26 @@ classdef FedEkf < handle
             TSL = [cos(theta) -sin(theta) P1(1); 
                    sin(theta)  cos(theta) P1(2); 
                             0           0     1];
+            TSLinv = TSL^-1;
 
-            tagsNuovoFrame = TSL^-1*[tags; ones(1, obj.data.nTag)];
+            tagsNuovoFrame = TSLinv*[tags; ones(1, obj.data.nTag)];
             tagsNuovoFrame = tagsNuovoFrame(1:2, :);
 
-            structCondivisa = struct('indici', maxInds, 'tags', tagsNuovoFrame);
+            vars = zeros(3, nTag);
+            R = TSLinv(1:2, 1:2);
+            for indTag = 1:nTag
+                Sigma = [ obj.varX(indTag), obj.covXY(indTag); 
+                         obj.covXY(indTag), obj.varY(indTag)];
+
+                Sigma_prime = R * Sigma * R';
+                varX_prime = Sigma_prime(1,1);
+                varY_prime = Sigma_prime(2,2);
+                varXY_prime = Sigma_prime(1,2);
+    
+                vars(:, indTag) = [varX_prime, varY_prime, varXY_prime]';
+            end
+
+            structCondivisa = struct('indici', maxInds, 'tags', tagsNuovoFrame, 'vars', vars);
         end
 
         %
@@ -343,19 +444,20 @@ classdef FedEkf < handle
             obj.xHatSLAMmeno = obj.xHatSLAM(:, obj.k+1);
             Pminus = obj.P;
 
-            % if obj.id == 1
-            %     other_measures = other_measures(2:end);
-            % elseif obj.id == length(other_measures)
-            %     other_measures = other_measures(1:end-1);
-            % else
-            %     other_measures = [other_measures(1:obj.id-1), other_measures(obj.id+1:end)];
-            % end
+            if obj.id == 1
+                other_measures = other_measures(2:end);
+            elseif obj.id == length(other_measures)
+                other_measures = other_measures(1:end-1);
+            else
+                other_measures = [other_measures(1:obj.id-1), other_measures(obj.id+1:end)];
+            end
 
             % LE MISURE VANNO ROTOTRASLATE
             % per ogni struct in other_measures prendere la matrice tags espressa rispetto gli indici e rototraslarla nel sdr locale
             % una volta che le nRobot-1 misure sono espresse nello stesso frame va calcolata la media (ed eventualmente la varianza)
             % le medie sono misuraX_ij e misuraY_ij
             posTagRobot = zeros(2, nTag, length(other_measures));
+            vars = zeros(2, nTag, length(other_measures));
             for robot = 1:length(other_measures)
                 % Calcola posizione del tag corrispondente al primo indice
                 numTag1 = other_measures(robot).indici(1);
@@ -380,21 +482,41 @@ classdef FedEkf < handle
                 TSL = [cos(theta) -sin(theta) P1(1); 
                        sin(theta)  cos(theta) P1(2); 
                                 0           0     1];
-    
+
+                % Applica rotazione alle varianze
+                R = TSL(1:2, 1:2);
+                for indTag = 1:nTag
+                    varX_ = other_measures(robot).vars(1, indTag);
+                    varY_ = other_measures(robot).vars(2, indTag);
+                    covXY_ = other_measures(robot).vars(3, indTag);
+                    Sigma = [ varX_, covXY_; 
+                             covXY_,  varY_];
+        
+                    Sigma_prime = R * Sigma * R';
+                    varX_prime = Sigma_prime(1,1);
+                    varY_prime = Sigma_prime(2,2);
+        
+                    vars(:, indTag, robot) = [varX_prime, varY_prime]';
+                end
+                    
+                % Applica trasformazione alle posizioni dei tag
                 temp = TSL*[other_measures(robot).tags; ones(1, nTag)];
                 posTagRobot(:, :, robot) = temp(1:2, :);
             end
-            measures_means = mean(posTagRobot, 3);
-            measures_std = std(posTagRobot, 0, 3);
+
+            temp = 1 ./ vars;
+            W_ = temp ./ sum(temp, 3);
+            measures_weighted  = sum(W_ .* posTagRobot, 3);
 
             indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
             for indTag = 1:nTag
                 indMat = indMatCum(indTag);
 
-                sigmaX = obj.sigmaMisuraMedia;
-                sigmaY = obj.sigmaMisuraMedia;
-                % sigmaX = measures_std(1, indTag);
-                % sigmaY = measures_std(2, indTag);
+                fused_var_x = 1 / sum(1 ./ vars(1, indTag, :));
+                fused_var_y = 1 / sum(1 ./ vars(2, indTag, :));
+
+                sigmaX = sqrt(fused_var_x);
+                sigmaY = sqrt(fused_var_y);
 
                 nPhi = obj.nPhiVett(indTag);
                 ind0 = obj.xHatCumIndices(indTag+1);
@@ -402,8 +524,8 @@ classdef FedEkf < handle
                 y_i   = obj.xHatSLAMmeno(1+ind0);
                 rho_i = obj.xHatSLAMmeno(2+ind0);
 
-                misuraX_ij = measures_means(1, indTag);
-                misuraY_ij = measures_means(2, indTag);
+                misuraX_ij = measures_weighted(1, indTag);
+                misuraY_ij = measures_weighted(2, indTag);
 
                 probMisuraX_ij = zeros(nPhi, 1);
                 probMisuraY_ij = zeros(nPhi, 1);
@@ -420,7 +542,7 @@ classdef FedEkf < handle
                     obj.innovazioneY(indMat+indPhi) = deltaMisuraY_ij;
                     probMisuraX_ij(indPhi) = exp(-deltaMisuraX_ij^2/(2*sigmaX^2));
                     probMisuraY_ij(indPhi) = exp(-deltaMisuraY_ij^2/(2*sigmaY^2));
-                    obj.pesi(indTag, indPhi) = obj.pesi(indTag, indPhi)*probMisuraX_ij(indPhi)*probMisuraY_ij(indPhi);
+                    %obj.pesi(indTag, indPhi) = obj.pesi(indTag, indPhi)*probMisuraX_ij(indPhi)*probMisuraY_ij(indPhi);
                 
                     obj.Hx(indMat+indPhi, 0+ind0) = 1;
                     obj.Hy(indMat+indPhi, 1+ind0) = 1;

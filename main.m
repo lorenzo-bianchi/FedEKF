@@ -1,42 +1,57 @@
 clc; clear; close all;
 
-seeds = 7;
+seeds = 8;
 for seed = seeds
-    rng(seed);
     fprintf("Seed %d:\n", seed);
 
     DISEGNA_ANIMAZIONE = 0;
-    DISEGNA_ULTIMO = 0;
+    DISEGNA_ULTIMO = 1;
     DISEGNA_PLOT = 0;
-    GENERA = 1;
+    DISEGNA_ICP = 0;
+    GENERA = 0;
     displayErrori = 1;
-    
+
     nRobot = 4;
-    
+
     dati % definisce alcune costanti del problema
-    
-    percorsi = zeros(nPassi, 5, nRobot);
+
+    if GENERA
+        passi_traj = 10000;
+        percorsi = zeros(passi_traj, 5, nRobot);
+        for robot = 1:nRobot
+            percorsi(:, :, robot) = percorsoRandom(data, passi_traj, seed + 10*robot);     % xVett, yVett, thetaVett, uRe, uLe
+        end
+        save('percorsi.mat', 'percorsi');
+    else
+        load('percorsi.mat', 'percorsi');
+    end
+
     ekfs = FedEkf.empty(nRobot, 0);
     TsGL = zeros(3, 3, nRobot);
     TsLG = zeros(3, 3, nRobot);
+
+    rng(seed);
     for robot = 1:nRobot
-        percorsi(:, :, robot) = percorsoRandom(data, GENERA);     % xVett, yVett, thetaVett, uRe, uLe
-    
         x0 = percorsi(1, 1, robot);
         y0 = percorsi(1, 2, robot);
         theta0 = percorsi(1, 3, robot);
         TsGL(:, :, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
         TsLG(:, :, robot) = TsGL(:, :, robot)^-1;
-    
-        misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
-    
+
+        % all'inizio il robot può stare fermo per ricevere diverse misure e
+        % fare la media per un inizializzazione più precisa
+        misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza/10*randn;
+
         stato0 = [0, 0, 0];
         ekfs(robot) = FedEkf(data, robot, stato0, misureRange);
     end
-    
+
     sharedInfoProto.indici = [0 0]';
     sharedInfoProto.tags = zeros(2, nTag);
+    sharedInfoProto.vars = zeros(3, nTag);
     sharedInfoArray(nRobot) = sharedInfoProto;
+
+    save_vars = false;
 
     tic;
     for k = 2:nPassi
@@ -47,26 +62,33 @@ for seed = seeds
             uLe = percorsi(k, 5 ,robot);
             % PREDIZIONE
             ekfs(robot).prediction(uRe, uLe);
-            
+
             % CORREZIONE (ogni Nstep passi)
             if mod(k, Nstep) == 0
                 misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
                 ekfs(robot).correction(misureRange);
             end
-            
-            % Salva le coordinate cartesiane dei tag
-            ekfs(robot).save_tags();
 
-            % Calcola informazioni per gli altri robot
-            if sharing && k > stepStartSharing
-                sharedInfoArray(robot) = ekfs(robot).data_to_share();
-            end
+            % Salva le coordinate cartesiane dei tag
+            ekfs(robot).save_tags(save_vars);
         end
 
         % CORREZIONE con altre misure
-        if sharing && k > stepStartSharing
+        if sharing && k > stepStartSharing && save_vars
+            for robot = 1:nRobot
+                sharedInfoArray(robot) = ekfs(robot).data_to_share();
+            end
+
             for robot = 1:nRobot
                 ekfs(robot).correction_shared(sharedInfoArray);
+            end
+        end
+
+        if sharing
+            temp = vertcat(ekfs.nPhiVett);
+            if sum(temp(:)) == nTag*nRobot && ~save_vars
+                fprintf("Inizio condivisione: %d\n", k);
+                save_vars = true;
             end
         end
     end
@@ -229,16 +251,21 @@ if DISEGNA_PLOT
         sgtitle(sprintf('Absolute errors robot %d', robot))
         
         set(gcf, 'position', [100, 100, 1500, 600]);
+    end
+end
 
-        % Grafici tag
+if DISEGNA_ICP
+    for robot = 1:nRobot
         cTagHat = [ekfs(robot).xHatTagStoria(:, end) ekfs(robot).yHatTagStoria(:, end)];
-        [R, t] = icp2D(cTag, cTagHat);
-        cTagHatTransformed = (R * cTag' + t)';
+        [R1, t1] = icp2D(cTag, cTagHat);
+        cTagTransformed = (R1 * cTag' + t1)';
+        [R2, t2] = icp2D(cTagTransformed, cTagHat);
+        cTagHatTransformed = (R2 * cTagHat' + t2)';
         figure;
-        plot(cTag(:,1), cTag(:,2), 'bo', 'DisplayName', 'cTag (global)', 'MarkerSize', 7, 'LineWidth', 2);
         hold on;
         plot(cTagHat(:,1), cTagHat(:,2), 'r+', 'DisplayName', 'cTagHat (local)', 'MarkerSize', 7, 'LineWidth', 2);
-        plot(cTagHatTransformed(:,1), cTagHatTransformed(:,2), 'kx', 'DisplayName', 'cTagHatTransformed', 'MarkerSize', 7, 'LineWidth', 2);
+        plot(cTagTransformed(:,1), cTagTransformed(:,2), 'kx', 'DisplayName', 'cTagTransformed', 'MarkerSize', 7, 'LineWidth', 2);
+        plot(cTagHatTransformed(:,1), cTagHatTransformed(:,2), 'bo', 'DisplayName', 'cTagHatTransformed', 'MarkerSize', 7, 'LineWidth', 2);
         legend;
         title(sprintf('Tags alignment robot %d', robot));
         xlabel('x [m]');
