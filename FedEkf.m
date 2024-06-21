@@ -255,40 +255,40 @@ classdef FedEkf < handle
                         end
                     end
 
-                    ind0 = obj.xHatCumIndices(indTag+1);
-                    if nPhi == 2
-                        phi1 = obj.xHatSLAMmeno(2+ind0+1);
-                        phi2 = obj.xHatSLAMmeno(2+ind0+2);
-
-                        peso1 = obj.pesi(indTag, 1);
-                        peso2 = obj.pesi(indTag, 2);
-
-                        min_w = 0.9;
-                        w = max(min_w, -(1-min_w)/6000*obj.k+1); 
-                        if  max(peso1, peso2) > w && abs(phi1-phi2) < 5*pi/180
-                            change = true;
-
-                            if peso1 > peso2
-                                indPhi = 2;
-                            else
-                                indPhi = 1;
-                            end
-
-                            temp = obj.pesi(indTag, indPhi+1:end);
-                            obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
-                            obj.pesi(indTag, end) = 0;
-
-                            obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
-                            obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
-                            obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
-
-                            ind0 = obj.xHatCumIndices(indTag+1);
-                            i = ind0 + 2 + indPhi;
-                            obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                            obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                            obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
-                        end
-                    end
+                    % ind0 = obj.xHatCumIndices(indTag+1);
+                    % if nPhi == 2
+                    %     phi1 = obj.xHatSLAMmeno(2+ind0+1);
+                    %     phi2 = obj.xHatSLAMmeno(2+ind0+2);
+                    % 
+                    %     peso1 = obj.pesi(indTag, 1);
+                    %     peso2 = obj.pesi(indTag, 2);
+                    % 
+                    %     min_w = 0.9;
+                    %     w = max(min_w, -(1-min_w)/6000*obj.k+1); 
+                    %     if  max(peso1, peso2) > w && abs(phi1-phi2) < 5*pi/180
+                    %         change = true;
+                    % 
+                    %         if peso1 > peso2
+                    %             indPhi = 2;
+                    %         else
+                    %             indPhi = 1;
+                    %         end
+                    % 
+                    %         temp = obj.pesi(indTag, indPhi+1:end);
+                    %         obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
+                    %         obj.pesi(indTag, end) = 0;
+                    % 
+                    %         obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
+                    %         obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
+                    %         obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
+                    % 
+                    %         ind0 = obj.xHatCumIndices(indTag+1);
+                    %         i = ind0 + 2 + indPhi;
+                    %         obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                    %         obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                    %         obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
+                    %     end
+                    % end
                 end
                 if change
                     nPhiTagNew = sum(obj.nPhiVett);
@@ -350,7 +350,7 @@ classdef FedEkf < handle
                     varRho = obj.P(ind_r, ind_r);
                     varPhi = obj.P(ind_p, ind_p);
 
-                    covXiYi   = obj.P(ind_x, ind_y);
+                    % covXiYi   = obj.P(ind_x, ind_y);
                     covXRho   = obj.P(ind_x, ind_r);
                     covXPhi   = obj.P(ind_x, ind_p);
                     covYRho   = obj.P(ind_y, ind_r);
@@ -381,65 +381,16 @@ classdef FedEkf < handle
 
         %
         function structCondivisa = data_to_share(obj)
-            nTag = obj.data.nTag;
-
-            % Trova id dei due landmark più lontani
             tags = [obj.xHatTagStoria(:, obj.k+1) obj.yHatTagStoria(:, obj.k+1)]';
-            chull = convhull(tags(1, :), tags(2, :));
-            hullPoints = tags(:, chull);
-            numHullPoints = length(chull)-1;
-
-            maxDist = 0.0;
-            for i = 1:numHullPoints
-                P1 = hullPoints(:, i);
-                for j = i+1:numHullPoints
-                    P2 = hullPoints(:, j);
-                    dist = norm(P1-P2);
-                    if dist > maxDist
-                        maxDist = dist;
-                        maxInds = chull([i, j]);
-                    end
-                end
-            end
-
-            % Calcola cambio di cordinate tra sdr locale e sdf con origine in P1 e asse x verso P2
-            P1 = tags(:, maxInds(1));
-            P2 = tags(:, maxInds(2));
-            V1 = [1 0]';
-            V2 = P2-P1;
-            normV2 = norm(V2);
-
-            costheta = dot(V1, V2)/normV2;
-            sintheta = (V1(1)*V2(2) - V1(2)*V2(1) ) / normV2;
-            theta = atan2(sintheta,costheta);
-            TSL = [cos(theta) -sin(theta) P1(1); 
-                   sin(theta)  cos(theta) P1(2); 
-                            0           0     1];
-            TSLinv = TSL^-1;
-
-            tagsNuovoFrame = TSLinv*[tags; ones(1, obj.data.nTag)];
-            tagsNuovoFrame = tagsNuovoFrame(1:2, :);
-
-            vars = zeros(3, nTag);
-            R = TSLinv(1:2, 1:2);
-            for indTag = 1:nTag
-                Sigma = [ obj.varX(indTag), obj.covXY(indTag); 
-                         obj.covXY(indTag), obj.varY(indTag)];
-
-                Sigma_prime = R * Sigma * R';
-                varX_prime = Sigma_prime(1,1);
-                varY_prime = Sigma_prime(2,2);
-                varXY_prime = Sigma_prime(1,2);
-    
-                vars(:, indTag) = [varX_prime, varY_prime, varXY_prime]';
-            end
-
-            structCondivisa = struct('indici', maxInds, 'tags', tagsNuovoFrame, 'vars', vars);
+            vars = [obj.varX; obj.varY; obj.covXY];
+            structCondivisa = struct('id', obj.id * ones(1, obj.data.nTag), 'tags', tags, 'vars', vars);
         end
 
         %
         function [obj] = correction_shared(obj, other_measures)
             nTag = obj.data.nTag;
+
+            thisRobotTags = [obj.xHatTagStoria(:, obj.k+1) obj.yHatTagStoria(:, obj.k+1)];
 
             obj.xHatSLAMmeno = obj.xHatSLAM(:, obj.k+1);
             Pminus = obj.P;
@@ -452,39 +403,46 @@ classdef FedEkf < handle
                 other_measures = [other_measures(1:obj.id-1), other_measures(obj.id+1:end)];
             end
 
-            % LE MISURE VANNO ROTOTRASLATE
-            % per ogni struct in other_measures prendere la matrice tags espressa rispetto gli indici e rototraslarla nel sdr locale
-            % una volta che le nRobot-1 misure sono espresse nello stesso frame va calcolata la media (ed eventualmente la varianza)
-            % le medie sono misuraX_ij e misuraY_ij
-            posTagRobot = zeros(2, nTag, length(other_measures));
-            vars = zeros(2, nTag, length(other_measures));
+            posTagRobot = zeros(2, nTag, 0);
+            vars = zeros(2, nTag, 0);
             for robot = 1:length(other_measures)
-                % Calcola posizione del tag corrispondente al primo indice
-                numTag1 = other_measures(robot).indici(1);
-                xTag1Mediato = obj.xHatTagStoria(numTag1, obj.k+1);
-                yTag1Mediato = obj.yHatTagStoria(numTag1, obj.k+1);
+                % % Calcola posizione del tag corrispondente al primo indice
+                % numTag1 = other_measures(robot).indici(1);
+                % xTag1Mediato = obj.xHatTagStoria(numTag1, obj.k+1);
+                % yTag1Mediato = obj.yHatTagStoria(numTag1, obj.k+1);
+                % 
+                % % Calcola posizione del tag corrispondente al secondo indice
+                % numTag2 = other_measures(robot).indici(2);
+                % xTag2Mediato = obj.xHatTagStoria(numTag2, obj.k+1);
+                % yTag2Mediato = obj.yHatTagStoria(numTag2, obj.k+1);
+                % 
+                % P1 = [xTag1Mediato; yTag1Mediato];
+                % P2 = [xTag2Mediato; yTag2Mediato];
+                % V1 = [1 0]';
+                % V2 = P2-P1;
+                % normV2 = norm(V2);
+                % 
+                % costheta = dot(V1, V2)/normV2;
+                % sintheta = (V1(1)*V2(2) - V1(2)*V2(1) ) / normV2;
+                % theta = atan2(sintheta,costheta);
+                % 
+                % TSL = [cos(theta) -sin(theta) P1(1); 
+                %        sin(theta)  cos(theta) P1(2); 
+                %                 0           0     1];
 
-                % Calcola posizione del tag corrispondente al secondo indice
-                numTag2 = other_measures(robot).indici(2);
-                xTag2Mediato = obj.xHatTagStoria(numTag2, obj.k+1);
-                yTag2Mediato = obj.yHatTagStoria(numTag2, obj.k+1);
+                otherRobotTags = other_measures(robot).tags;
+                [R, t, inliers] = ransacRototranslation(otherRobotTags', thisRobotTags, obj.data.numIterations, obj.data.distanceThreshold, round(obj.data.percentMinInliers * nTag));
+                if isempty(inliers)
+                    continue
+                end
 
-                P1 = [xTag1Mediato; yTag1Mediato];
-                P2 = [xTag2Mediato; yTag2Mediato];
-                V1 = [1 0]';
-                V2 = P2-P1;
-                normV2 = norm(V2);
-    
-                costheta = dot(V1, V2)/normV2;
-                sintheta = (V1(1)*V2(2) - V1(2)*V2(1) ) / normV2;
-                theta = atan2(sintheta,costheta);
+                T = [R, t; zeros(1, 2), 1];
 
-                TSL = [cos(theta) -sin(theta) P1(1); 
-                       sin(theta)  cos(theta) P1(2); 
-                                0           0     1];
+                % Applica rototraslazione alle posizioni dei tag
+                temp = T*[otherRobotTags; ones(1, nTag)];
+                posTagRobot(:, :, end+1) = temp(1:2, :);
 
                 % Applica rotazione alle varianze
-                R = TSL(1:2, 1:2);
                 for indTag = 1:nTag
                     varX_ = other_measures(robot).vars(1, indTag);
                     varY_ = other_measures(robot).vars(2, indTag);
@@ -496,12 +454,8 @@ classdef FedEkf < handle
                     varX_prime = Sigma_prime(1,1);
                     varY_prime = Sigma_prime(2,2);
         
-                    vars(:, indTag, robot) = [varX_prime, varY_prime]';
+                    vars(:, indTag, size(posTagRobot, 3)) = [varX_prime, varY_prime]';
                 end
-                    
-                % Applica trasformazione alle posizioni dei tag
-                temp = TSL*[other_measures(robot).tags; ones(1, nTag)];
-                posTagRobot(:, :, robot) = temp(1:2, :);
             end
 
             temp = 1 ./ vars;
