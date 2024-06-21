@@ -1,5 +1,6 @@
 function percorso = percorsoRandom(data, passi_traj, seed)
-    rng(seed)
+    rng(seed);
+
     gradi = pi/180;
     
     passoOdometrico = 0.01;

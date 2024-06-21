@@ -1,20 +1,22 @@
 clc; clear; close all;
 
-seeds = 8;
+seeds = 9;
 for seed = seeds
+    rng(seed);
     fprintf("Seed %d:\n", seed);
 
     DISEGNA_ANIMAZIONE = 0;
-    DISEGNA_ULTIMO = 1;
+    DISEGNA_ULTIMO = 0;
     DISEGNA_PLOT = 0;
     DISEGNA_ICP = 0;
-    GENERA = 0;
+    GENERA = 1;
     displayErrori = 1;
 
     nRobot = 4;
 
     dati % definisce alcune costanti del problema
 
+    %%%% PEGGIORA I RISULTATI %%%%
     if GENERA
         passi_traj = 10000;
         percorsi = zeros(passi_traj, 5, nRobot);
@@ -38,15 +40,13 @@ for seed = seeds
         TsGL(:, :, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
         TsLG(:, :, robot) = TsGL(:, :, robot)^-1;
 
-        % all'inizio il robot può stare fermo per ricevere diverse misure e
-        % fare la media per un inizializzazione più precisa
-        misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza/10*randn;
+        misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
 
         stato0 = [0, 0, 0];
         ekfs(robot) = FedEkf(data, robot, stato0, misureRange);
     end
 
-    sharedInfoProto.indici = [0 0]';
+    sharedInfoProto.id = -1 * ones(1, nTag);
     sharedInfoProto.tags = zeros(2, nTag);
     sharedInfoProto.vars = zeros(3, nTag);
     sharedInfoArray(nRobot) = sharedInfoProto;
@@ -76,7 +76,9 @@ for seed = seeds
         % CORREZIONE con altre misure
         if sharing && k > stepStartSharing && save_vars
             for robot = 1:nRobot
-                sharedInfoArray(robot) = ekfs(robot).data_to_share();
+                % if sum(ekfs(robot).nPhiVett) == nTag
+                    sharedInfoArray(robot) = ekfs(robot).data_to_share();
+                % end
             end
 
             for robot = 1:nRobot
@@ -87,7 +89,8 @@ for seed = seeds
         if sharing
             temp = vertcat(ekfs.nPhiVett);
             if sum(temp(:)) == nTag*nRobot && ~save_vars
-                fprintf("Inizio condivisione: %d\n", k);
+                finePruning = k;
+                fprintf("Fine pruning: %d\n", k);
                 save_vars = true;
             end
         end
@@ -106,7 +109,7 @@ for seed = seeds
         xVett = percorsi(:, 1, robot);
         yVett = percorsi(:, 2, robot);
     
-        distanzeRobotVere(robot, :) = sqrt((xVett(end)-cTag(:,1)).^2+(yVett(end)-cTag(:,2)).^2)';
+        distanzeRobotVere(robot, :) = sqrt((xVett(k)-cTag(:,1)).^2+(yVett(k)-cTag(:,2)).^2)';
 
         x_r = ekfs(robot).xHatSLAM(1, end);
         y_r = ekfs(robot).xHatSLAM(2, end);
@@ -130,7 +133,7 @@ for seed = seeds
     
         posRobLoc = [x_r; y_r; 1];
         posRobGlob = TsGL(:, :, robot)*posRobLoc;
-        erroreAssolutoRobot(robot) = sqrt((posRobGlob(1)-xVett(end))^2+(posRobGlob(2)-yVett(end))^2);
+        erroreAssolutoRobot(robot) = sqrt((posRobGlob(1)-xVett(k))^2+(posRobGlob(2)-yVett(k))^2);
         
         if displayErrori
             fprintf("Robot %d:\n", robot);
@@ -221,7 +224,7 @@ if DISEGNA_PLOT
             xline(stepStartPruning, '--k', 'LineWidth', 1, 'DisplayName', 'Pruning');
         end
         if sharing
-            xline(stepStartSharing, '-.k', 'LineWidth', 1, 'DisplayName', 'Sharing');
+            xline(max(stepStartSharing, finePruning), '-.k', 'LineWidth', 1, 'DisplayName', 'Sharing');
         end
 
         grid on

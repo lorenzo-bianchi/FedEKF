@@ -255,40 +255,40 @@ classdef FedEkf < handle
                         end
                     end
 
-                    % ind0 = obj.xHatCumIndices(indTag+1);
-                    % if nPhi == 2
-                    %     phi1 = obj.xHatSLAMmeno(2+ind0+1);
-                    %     phi2 = obj.xHatSLAMmeno(2+ind0+2);
-                    % 
-                    %     peso1 = obj.pesi(indTag, 1);
-                    %     peso2 = obj.pesi(indTag, 2);
-                    % 
-                    %     min_w = 0.9;
-                    %     w = max(min_w, -(1-min_w)/6000*obj.k+1); 
-                    %     if  max(peso1, peso2) > w && abs(phi1-phi2) < 5*pi/180
-                    %         change = true;
-                    % 
-                    %         if peso1 > peso2
-                    %             indPhi = 2;
-                    %         else
-                    %             indPhi = 1;
-                    %         end
-                    % 
-                    %         temp = obj.pesi(indTag, indPhi+1:end);
-                    %         obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
-                    %         obj.pesi(indTag, end) = 0;
-                    % 
-                    %         obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
-                    %         obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
-                    %         obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
-                    % 
-                    %         ind0 = obj.xHatCumIndices(indTag+1);
-                    %         i = ind0 + 2 + indPhi;
-                    %         obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                    %         obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                    %         obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
-                    %     end
-                    % end
+                    ind0 = obj.xHatCumIndices(indTag+1);
+                    if nPhi == 2
+                        phi1 = obj.xHatSLAMmeno(2+ind0+1);
+                        phi2 = obj.xHatSLAMmeno(2+ind0+2);
+
+                        peso1 = obj.pesi(indTag, 1);
+                        peso2 = obj.pesi(indTag, 2);
+
+                        min_w = 0.9;
+                        w = max(min_w, -(1-min_w)/6000*obj.k+1); 
+                        if  max(peso1, peso2) > w && abs(phi1-phi2) < 5*pi/180
+                            change = true;
+
+                            if peso1 > peso2
+                                indPhi = 2;
+                            else
+                                indPhi = 1;
+                            end
+
+                            temp = obj.pesi(indTag, indPhi+1:end);
+                            obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
+                            obj.pesi(indTag, end) = 0;
+
+                            obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
+                            obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
+                            obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
+
+                            ind0 = obj.xHatCumIndices(indTag+1);
+                            i = ind0 + 2 + indPhi;
+                            obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                            obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                            obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
+                        end
+                    end
                 end
                 if change
                     nPhiTagNew = sum(obj.nPhiVett);

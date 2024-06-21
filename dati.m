@@ -1,20 +1,26 @@
 data = struct();
 
 nPassi = 1000;
-nPhi = 16; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
+nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
 pruning = 1;
 minZerosStartPruning = ceil(nPhi*0.7);
 stepStartPruning = 100;         % mettere valore piccolo per evitare errori iniziali
-sharing = 0;
-stepStartSharing = 1000;
+sharing = 1;
+stepStartSharing = 200;
 
 sigmaDistanza = 0.2; % std in m della misura di range
 sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla deviazione standard dell'errore di misura
 sigmaMisuraMedia = 1.0;
 
+numIterations = 20;
+distanceThreshold = 0.2;
+percentMinInliers = 0.6;
+
 Nstep = 1; % passi tra una misura e la successiva
 possibiliPhi = linspace(-pi+2*pi/nPhi, pi, nPhi);
 sigmaPhi = 2*pi/(1.5*nPhi); %pi/(3*nPhi);
+
+finePruning = -1;
 
 L = 5; % lunghezza lato ambiente (quadrato)
     
@@ -72,3 +78,7 @@ data.KLvera = KLvera;
 data.pruning = pruning;
 data.minZerosStartPruning = minZerosStartPruning;
 data.stepStartPruning = stepStartPruning ;
+
+data.numIterations = numIterations;
+data.distanceThreshold = distanceThreshold;
+data.percentMinInliers = percentMinInliers;
