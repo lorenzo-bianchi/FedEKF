@@ -1,14 +1,5 @@
 clc; clear; close all;
 
-DISEGNA_ANIMAZIONE = 0;
-DISEGNA_ULTIMO = 0;
-DISEGNA_PLOT = 0;
-DISEGNA_ICP = 0;
-displayErrori = 1;
-
-seed = 9;
-rng(seed)
-
 load('percorsi.mat', 'percorsi');
 
 dati

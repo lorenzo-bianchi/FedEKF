@@ -444,61 +444,65 @@ classdef FedEkf < handle
                 return
             end
 
-            vars = (0 * vars + 1) * 0.2;    % FIXME
-            temp = 1 ./ vars;
-            W_ = temp ./ sum(temp, 3);
-            measures_weighted  = sum(W_ .* posTagRobot, 3);
+            % vars = (0 * vars + 1);    % FIXME
+            % temp = 1 ./ vars;
+            % W_ = temp ./ sum(temp, 3);
+            % measures_weighted  = sum(W_ .* posTagRobot, 3);
 
             indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
-            for indTag = 1:nTag
-                indMat = indMatCum(indTag);
-
-                fused_var_x = 1 / sum(1 ./ vars(1, indTag, :));
-                fused_var_y = 1 / sum(1 ./ vars(2, indTag, :));
-
-                sigmaX = sqrt(fused_var_x);
-                sigmaY = sqrt(fused_var_y);
-
-                nPhi = obj.nPhiVett(indTag);
-                ind0 = obj.xHatCumIndices(indTag+1);
-                x_i   = obj.xHatSLAMmeno(0+ind0);
-                y_i   = obj.xHatSLAMmeno(1+ind0);
-                rho_i = obj.xHatSLAMmeno(2+ind0);
-
-                misuraX_ij = measures_weighted(1, indTag);
-                misuraY_ij = measures_weighted(2, indTag);
-
-                probMisuraX_ij = zeros(nPhi, 1);
-                probMisuraY_ij = zeros(nPhi, 1);
-
-                for indPhi = 1:nPhi
-                    phi_ij = obj.xHatSLAMmeno(2+ind0+indPhi);
-                    cosPhi_ij = cos(phi_ij);
-                    sinPhi_ij = sin(phi_ij);
-                    xTag_ij = x_i + rho_i*cosPhi_ij;
-                    yTag_ij = y_i + rho_i*sinPhi_ij;
-                    deltaMisuraX_ij = misuraX_ij - xTag_ij;
-                    deltaMisuraY_ij = misuraY_ij - yTag_ij;
-                    obj.innovazioneX(indMat+indPhi) = deltaMisuraX_ij;
-                    obj.innovazioneY(indMat+indPhi) = deltaMisuraY_ij;
-                    probMisuraX_ij(indPhi) = exp(-deltaMisuraX_ij^2/(2*sigmaX^2));
-                    probMisuraY_ij(indPhi) = exp(-deltaMisuraY_ij^2/(2*sigmaY^2));
-                    obj.pesi(indTag, indPhi) = obj.pesi(indTag, indPhi)*probMisuraX_ij(indPhi)*probMisuraY_ij(indPhi);
-                
-                    obj.Hx(indMat+indPhi, 0+ind0) = 1;
-                    obj.Hy(indMat+indPhi, 1+ind0) = 1;
-                    obj.Hx(indMat+indPhi, 2+ind0) = cosPhi_ij;
-                    obj.Hy(indMat+indPhi, 2+ind0) = sinPhi_ij;
-                    obj.Hx(indMat+indPhi, 2+ind0+indPhi) = -rho_i*sinPhi_ij;
-                    obj.Hy(indMat+indPhi, 2+ind0+indPhi) =  rho_i*cosPhi_ij;
-                end
-                lambdaX_ij = probMisuraX_ij/sum(probMisuraX_ij);
-                lambdaY_ij = probMisuraY_ij/sum(probMisuraY_ij);
-
-                % Matrice covarianza misure con formula che tiene conto dell'Information Sharing
-                for indPhi = 1:nPhi
-                    obj.RsX(indMat+indPhi, indMat+indPhi) = sigmaX^2/(max(0.0001, lambdaX_ij(indPhi)));
-                    obj.RsY(indMat+indPhi, indMat+indPhi) = sigmaY^2/(max(0.0001, lambdaY_ij(indPhi)));
+            for idx_pos = 1:size(posTagRobot, 3)
+                pos = posTagRobot(:, :, idx_pos);
+                for indTag = 1:nTag
+                    indMat = indMatCum(indTag);
+    
+                    var = 0.1;
+                    fused_var_x = var; %1 / sum(1 ./ vars(1, indTag, :));
+                    fused_var_y = var; %1 / sum(1 ./ vars(2, indTag, :));
+    
+                    sigmaX = sqrt(fused_var_x);
+                    sigmaY = sqrt(fused_var_y);
+    
+                    nPhi = obj.nPhiVett(indTag);
+                    ind0 = obj.xHatCumIndices(indTag+1);
+                    x_i   = obj.xHatSLAMmeno(0+ind0);
+                    y_i   = obj.xHatSLAMmeno(1+ind0);
+                    rho_i = obj.xHatSLAMmeno(2+ind0);
+    
+                    misuraX_ij = pos(1, indTag); %measures_weighted(1, indTag);
+                    misuraY_ij = pos(2, indTag); %measures_weighted(2, indTag);
+    
+                    probMisuraX_ij = zeros(nPhi, 1);
+                    probMisuraY_ij = zeros(nPhi, 1);
+    
+                    for indPhi = 1:nPhi
+                        phi_ij = obj.xHatSLAMmeno(2+ind0+indPhi);
+                        cosPhi_ij = cos(phi_ij);
+                        sinPhi_ij = sin(phi_ij);
+                        xTag_ij = x_i + rho_i*cosPhi_ij;
+                        yTag_ij = y_i + rho_i*sinPhi_ij;
+                        deltaMisuraX_ij = misuraX_ij - xTag_ij;
+                        deltaMisuraY_ij = misuraY_ij - yTag_ij;
+                        obj.innovazioneX(indMat+indPhi) = deltaMisuraX_ij;
+                        obj.innovazioneY(indMat+indPhi) = deltaMisuraY_ij;
+                        probMisuraX_ij(indPhi) = exp(-deltaMisuraX_ij^2/(2*sigmaX^2));
+                        probMisuraY_ij(indPhi) = exp(-deltaMisuraY_ij^2/(2*sigmaY^2));
+                        obj.pesi(indTag, indPhi) = obj.pesi(indTag, indPhi)*probMisuraX_ij(indPhi)*probMisuraY_ij(indPhi);
+                    
+                        obj.Hx(indMat+indPhi, 0+ind0) = 1;
+                        obj.Hy(indMat+indPhi, 1+ind0) = 1;
+                        obj.Hx(indMat+indPhi, 2+ind0) = cosPhi_ij;
+                        obj.Hy(indMat+indPhi, 2+ind0) = sinPhi_ij;
+                        obj.Hx(indMat+indPhi, 2+ind0+indPhi) = -rho_i*sinPhi_ij;
+                        obj.Hy(indMat+indPhi, 2+ind0+indPhi) =  rho_i*cosPhi_ij;
+                    end
+                    lambdaX_ij = probMisuraX_ij/sum(probMisuraX_ij);
+                    lambdaY_ij = probMisuraY_ij/sum(probMisuraY_ij);
+    
+                    % Matrice covarianza misure con formula che tiene conto dell'Information Sharing
+                    for indPhi = 1:nPhi
+                        obj.RsX(indMat+indPhi, indMat+indPhi) = sigmaX^2/(max(0.0001, lambdaX_ij(indPhi)));
+                        obj.RsY(indMat+indPhi, indMat+indPhi) = sigmaY^2/(max(0.0001, lambdaY_ij(indPhi)));
+                    end
                 end
             end
             

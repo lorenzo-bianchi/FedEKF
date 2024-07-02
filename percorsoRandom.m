@@ -3,7 +3,7 @@ function percorso = percorsoRandom(data, passi_traj, seed)
 
     gradi = pi/180;
     
-    passoOdometrico = 0.01;
+    passoOdometrico = 0.05;
     nPassi = passi_traj;
     dVera = data.dVera;
     deltaRvera = data.deltaRvera;
@@ -42,7 +42,7 @@ function percorso = percorsoRandom(data, passi_traj, seed)
         %     end
         % end
       
-        if distanza < clearance || distanzaTag < 0.2 % ho da girà!
+        if distanza < clearance || distanzaTag < 0.2 || rand > 0.99 % ho da girà!
             curvaDaFare = max(uno, rand*cinque); % è la curva in gradi che deve essere effettuata
             passiCurvaDaFare = round(curvaDaFare/uno); % è il numero di passi che il robot impiegherà per fare la curva
             gradiPerPasso = curvaDaFare/passiCurvaDaFare;
