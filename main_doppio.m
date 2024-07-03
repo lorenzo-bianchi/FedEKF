@@ -20,9 +20,14 @@ for i = 0:1
     fprintf('Sharing: %d\n', sharing)
 
     ekfs = FedEkf.empty(nRobot, 0);
-    TsGL = zeros(3, 3, 1, nRobot);
-    TsLG = zeros(3, 3, 1, nRobot);
-    
+
+    TsGL = cell(1, nRobot);
+    TsLG = cell(1, nRobot);
+    for robot = 1:nRobot
+        TsGL{robot} = zeros(3, 3, 0);
+        TsLG{robot} = zeros(3, 3, 0);
+    end
+
     main_simulazione;
 
     ekfsTot{i+1} = ekfs;

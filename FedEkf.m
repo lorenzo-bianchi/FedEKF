@@ -208,114 +208,115 @@ classdef FedEkf < handle
     
             % Aggiornamento pesi
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
+        end
 
-            % Pruning
-            if obj.data.pruning && obj.k >= obj.stepStartPruning
-                change = false;
+        % 
+        function [obj] = pruning(obj)
+            nTag = obj.data.nTag;
+            change = false;
 
-                if any(obj.startPruning == 0)
-                    for indTag = 1:nTag
-                        if obj.startPruning(indTag) > 0
-                            continue
-                        end
-
-                        nPhi = obj.nPhiVett(indTag);
-                        nZeri = 0;
-                        for indPhi = 1:nPhi
-                            if obj.pesi(indTag, indPhi) < 0.00001/nPhi
-                                nZeri = nZeri + 1;
-                            end
-                        end
-                        if nZeri >= obj.minZerosStartPruning
-                            obj.startPruning(indTag) = obj.k;
-                        end
-                    end
-                end
-
+            if any(obj.startPruning == 0)
                 for indTag = 1:nTag
-                    if obj.startPruning(indTag) == 0
+                    if obj.startPruning(indTag) > 0
                         continue
                     end
 
                     nPhi = obj.nPhiVett(indTag);
-                    indPhi = 1;
-                    while indPhi <= nPhi
+                    nZeri = 0;
+                    for indPhi = 1:nPhi
                         if obj.pesi(indTag, indPhi) < 0.00001/nPhi
-                            change = true;
-                            nPhi = nPhi - 1;
-    
-                            temp = obj.pesi(indTag, indPhi+1:end);
-                            obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
-                            obj.pesi(indTag, end) = 0;
-    
-                            obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
-                            obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
-                            obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
-    
-                            ind0 = obj.xHatCumIndices(indTag+1);
-                            i = ind0 + 2 + indPhi;
-                            obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                            obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                            obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
+                            nZeri = nZeri + 1;
+                        end
+                    end
+                    if nZeri >= obj.minZerosStartPruning
+                        obj.startPruning(indTag) = obj.k;
+                    end
+                end
+            end
+
+            for indTag = 1:nTag
+                if obj.startPruning(indTag) == 0
+                    continue
+                end
+
+                nPhi = obj.nPhiVett(indTag);
+                indPhi = 1;
+                while indPhi <= nPhi
+                    if obj.pesi(indTag, indPhi) < 0.00001/nPhi
+                        change = true;
+                        nPhi = nPhi - 1;
+
+                        temp = obj.pesi(indTag, indPhi+1:end);
+                        obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
+                        obj.pesi(indTag, end) = 0;
+
+                        obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
+                        obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
+                        obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
+
+                        ind0 = obj.xHatCumIndices(indTag+1);
+                        i = ind0 + 2 + indPhi;
+                        obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                        obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                        obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
+                    else
+                        indPhi = indPhi + 1;
+                    end
+                end
+
+                ind0 = obj.xHatCumIndices(indTag+1);
+                if nPhi == 2
+                    phi1 = obj.xHatSLAMmeno(2+ind0+1);
+                    phi2 = obj.xHatSLAMmeno(2+ind0+2);
+
+                    peso1 = obj.pesi(indTag, 1);
+                    peso2 = obj.pesi(indTag, 2);
+
+                    min_w = 0.9;
+                    w = max(min_w, -(1-min_w)/6000*obj.k+1); 
+                    if  max(peso1, peso2) > w && abs(phi1-phi2) < 5*pi/180
+                        change = true;
+
+                        if peso1 > peso2
+                            indPhi = 2;
                         else
-                            indPhi = indPhi + 1;
+                            indPhi = 1;
                         end
-                    end
 
-                    ind0 = obj.xHatCumIndices(indTag+1);
-                    if nPhi == 2
-                        phi1 = obj.xHatSLAMmeno(2+ind0+1);
-                        phi2 = obj.xHatSLAMmeno(2+ind0+2);
+                        temp = obj.pesi(indTag, indPhi+1:end);
+                        obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
+                        obj.pesi(indTag, end) = 0;
 
-                        peso1 = obj.pesi(indTag, 1);
-                        peso2 = obj.pesi(indTag, 2);
+                        obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
+                        obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
+                        obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
 
-                        min_w = 0.9;
-                        w = max(min_w, -(1-min_w)/6000*obj.k+1); 
-                        if  max(peso1, peso2) > w && abs(phi1-phi2) < 5*pi/180
-                            change = true;
-
-                            if peso1 > peso2
-                                indPhi = 2;
-                            else
-                                indPhi = 1;
-                            end
-
-                            temp = obj.pesi(indTag, indPhi+1:end);
-                            obj.pesi(indTag, indPhi:indPhi+length(temp)-1) = temp;
-                            obj.pesi(indTag, end) = 0;
-
-                            obj.xHatIndices(2+indTag) = obj.xHatIndices(2+indTag) - 1;
-                            obj.xHatCumIndices(2+indTag:end) = obj.xHatCumIndices(2+indTag:end) - 1;
-                            obj.nPhiVett(indTag) = obj.nPhiVett(indTag) - 1;
-
-                            ind0 = obj.xHatCumIndices(indTag+1);
-                            i = ind0 + 2 + indPhi;
-                            obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                            obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                            obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
-                        end
+                        ind0 = obj.xHatCumIndices(indTag+1);
+                        i = ind0 + 2 + indPhi;
+                        obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                        obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
+                        obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
                     end
                 end
-                if change
-                    nPhiTagNew = sum(obj.nPhiVett);
-                    stateLenNew = sum(obj.xHatIndices)-1;
+            end
+            if change
+                nPhiTagNew = sum(obj.nPhiVett);
+                stateLenNew = sum(obj.xHatIndices)-1;
+
+                obj.innovazione = zeros(nPhiTagNew, 1);
     
-                    obj.innovazione = zeros(nPhiTagNew, 1);
-        
-                    obj.xHatSLAMmeno = zeros(stateLenNew, 1);
-                    obj.F = eye(stateLenNew);
-                    obj.W = zeros(stateLenNew, 2);
-                    obj.H = zeros(nPhiTagNew, stateLenNew);
-                    obj.Rs = zeros(nPhiTagNew, nPhiTagNew);
+                obj.xHatSLAMmeno = zeros(stateLenNew, 1);
+                obj.F = eye(stateLenNew);
+                obj.W = zeros(stateLenNew, 2);
+                obj.H = zeros(nPhiTagNew, stateLenNew);
+                obj.Rs = zeros(nPhiTagNew, nPhiTagNew);
 
-                    obj.Hx = zeros(nPhiTagNew, stateLenNew);
-                    obj.Hy = zeros(nPhiTagNew, stateLenNew);
-                    obj.innovazioneX = zeros(nPhiTagNew, 1);
-                    obj.innovazioneY = zeros(nPhiTagNew, 1);
-                    obj.RsX = zeros(nPhiTagNew, nPhiTagNew);
-                    obj.RsY = zeros(nPhiTagNew, nPhiTagNew);
-                end
+                obj.Hx = zeros(nPhiTagNew, stateLenNew);
+                obj.Hy = zeros(nPhiTagNew, stateLenNew);
+                obj.innovazioneX = zeros(nPhiTagNew, 1);
+                obj.innovazioneY = zeros(nPhiTagNew, 1);
+                obj.RsX = zeros(nPhiTagNew, nPhiTagNew);
+                obj.RsY = zeros(nPhiTagNew, nPhiTagNew);
             end
         end
     
@@ -450,7 +451,7 @@ classdef FedEkf < handle
             % check reset
             if isempty(posTagRobot)
                 if obj.data.reset
-                    if length(other_measures) > 1 || other_measures(1).idx ~= obj.id
+                    if length(other_measures) > 1 || other_measures(1).id ~= obj.id
                         obj.nReset = obj.nReset + 1;
                     end
                     if obj.nReset >= obj.data.resetThr

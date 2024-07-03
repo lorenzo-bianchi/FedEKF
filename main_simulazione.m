@@ -3,8 +3,8 @@ for robot = 1:nRobot
     x0 = percorsi(1, 1, robot);
     y0 = percorsi(1, 2, robot);
     theta0 = percorsi(1, 3, robot);
-    TsGL(:, :, 1, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
-    TsLG(:, :, 1, robot) = TsGL(:, :, 1, robot)^-1;
+    TsGL{robot}(:, :, end+1) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
+    TsLG{robot}(:, :, end+1) = TsGL{robot}(:, :, 1)^-1;
 
     misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
 
@@ -33,6 +33,10 @@ for k = 2:nPassi
         if mod(k, Nstep) == 0
             misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
             ekfs(robot).correction(misureRange);
+
+            if pruning && k >= stepStartPruning
+                ekfs(robot).pruning();
+            end
         end
 
         % Salva le coordinate cartesiane dei tag
@@ -62,8 +66,8 @@ for k = 2:nPassi
                     x0 = percorsi(k, 1, robot);
                     y0 = percorsi(k, 2, robot);
                     theta0 = percorsi(k, 3, robot);
-                    TsGL(:, :, 1, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
-                    TsLG(:, :, 1, robot) = TsGL(:, :, 1, robot)^-1;
+                    TsGL{robot}(:, :, end+1) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
+                    TsLG{robot}(:, :, end+1) = TsGL{robot}(:, :, end)^-1;
                 end
             end
         end

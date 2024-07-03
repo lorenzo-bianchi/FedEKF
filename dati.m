@@ -5,7 +5,7 @@ DISEGNA_ANIMAZIONE = 0;
 DISEGNA_ULTIMO = 0;
 DISEGNA_PLOT = 0;
 DISEGNA_ICP = 0;
-displayErrori = 0;
+displayErrori = 1;
 
 data = struct();
 
@@ -21,7 +21,7 @@ stepStartSharing = 200;
 reset = 0;
 resetThr = 100;
 
-sigmaDistanza = 0.2; % std in m della misura di range
+sigmaDistanza = 0.01; % std in m della misura di range
 sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla deviazione standard dell'errore di misura
 sigmaMisuraMedia = 1.0;
 

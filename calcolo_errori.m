@@ -12,28 +12,28 @@ for robot = 1:nRobot
 
     distanzeRobotVere(robot, :) = sqrt((xVett(k)-cTag(:,1)).^2+(yVett(k)-cTag(:,2)).^2)';
 
-    x_r = ekfs(robot).xHatSLAM(1, end);
-    y_r = ekfs(robot).xHatSLAM(2, end);
-    xHatTag = ekfs(robot).xHatTagStoria(:, end);
-    yHatTag = ekfs(robot).yHatTagStoria(:, end);
-    distanzeRobotStimate(robot, :) = sqrt((x_r-xHatTag).^2+(y_r-yHatTag).^2);
+    xRobotEnd = ekfs(robot).xHatSLAM(1, end);
+    yRobotEnd = ekfs(robot).xHatSLAM(2, end);
+    xHatTagEnd = ekfs(robot).xHatTagStoria(:, end);
+    yHatTagEnd = ekfs(robot).yHatTagStoria(:, end);
+    distanzeRobotStimate(robot, :) = sqrt((xRobotEnd-xHatTagEnd).^2+(yRobotEnd-yHatTagEnd).^2);
     
     indice = 0;
     for indTag = 1:nTag-1
         for jndTag = indTag+1:nTag
             indice = indice + 1;
             distanzeInterTagVere(robot, indice) = sqrt((cTag(indTag,1)-cTag(jndTag,1)).^2+(cTag(indTag,2)-cTag(jndTag,2)).^2);
-            distanzeInterTagStimate(robot, indice) = sqrt((xHatTag(indTag)-xHatTag(jndTag)).^2+(yHatTag(indTag)-yHatTag(jndTag)).^2);
+            distanzeInterTagStimate(robot, indice) = sqrt((xHatTagEnd(indTag)-xHatTagEnd(jndTag)).^2+(yHatTagEnd(indTag)-yHatTagEnd(jndTag)).^2);
         end
     end
 
-    posHatTagLoc = [xHatTag'; yHatTag'; ones(1, nTag)];
-    posHatTagGlob = (TsGL(:, :, 1, robot)*posHatTagLoc)';
+    posHatTagLoc = [xHatTagEnd'; yHatTagEnd'; ones(1, nTag)];
+    posHatTagGlob = (TsGL{robot}(:, :, end)*posHatTagLoc)';
     
     erroriAssolutiTag(robot, :) = sqrt((posHatTagGlob(:, 1)-cTag(:, 1)).^2+(posHatTagGlob(:, 2)-cTag(:, 2)).^2);
 
-    posRobLoc = [x_r; y_r; 1];
-    posRobGlob = TsGL(:, :, 1, robot)*posRobLoc;
+    posRobLoc = [xRobotEnd; yRobotEnd; 1];
+    posRobGlob = TsGL{robot}(:, :, end)*posRobLoc;
     erroreAssolutoRobot(robot) = sqrt((posRobGlob(1)-xVett(k))^2+(posRobGlob(2)-yVett(k))^2);
     
     if displayErrori

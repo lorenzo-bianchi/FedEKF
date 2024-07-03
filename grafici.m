@@ -38,7 +38,7 @@ if DISEGNA_PLOT
         hAx1 = axes('Position', [0.05, 0.1, 0.4, 0.8]);
         for tag = 1:nTag
             posLoc = [x(tag, :); y(tag, :); ones(1, length(time))];
-            posGlob = TsGL(:, :, 1, robot)*posLoc;
+            posGlob = TsGL{robot}(:, :, 1)*posLoc;
             plot(time, posGlob(1, :), 'LineWidth', 1.5, 'Color', colors{tag}, 'DisplayName', names{tag})
             hold on
             plot(time, cTag(tag, 1)*ones(1, length(time)), '--', 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', '')
@@ -62,7 +62,7 @@ if DISEGNA_PLOT
         hAx2 = axes('Position', [0.55, 0.1, 0.4, 0.8]);
         for tag = 1:nTag
             posLoc = [x(tag, :); y(tag, :); ones(1, length(time))];
-            posGlob = TsGL(:, :, 1, robot)*posLoc;
+            posGlob = TsGL{robot}(:, :, 1)*posLoc;
             plot(time, posGlob(2, :), 'LineWidth', 1.5, 'Color', colors{tag}, 'DisplayName', names{tag})
             hold on
             plot(time, cTag(tag, 2)*ones(1, length(time)), '--', 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', '')
