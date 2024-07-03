@@ -3,8 +3,8 @@ for robot = 1:nRobot
     x0 = percorsi(1, 1, robot);
     y0 = percorsi(1, 2, robot);
     theta0 = percorsi(1, 3, robot);
-    TsGL(:, :, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
-    TsLG(:, :, robot) = TsGL(:, :, robot)^-1;
+    TsGL(:, :, 1, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
+    TsLG(:, :, 1, robot) = TsGL(:, :, 1, robot)^-1;
 
     misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
 
@@ -13,6 +13,10 @@ for robot = 1:nRobot
 end
 
 startSharing = -1 * ones(1, nRobot);
+tResets = cell(1, nRobot);
+for robot = 1:nRobot
+    tResets{robot} = [];
+end
 
 tic;
 for k = 2:nPassi
@@ -50,6 +54,17 @@ for k = 2:nPassi
         if ~isempty(sharedInfoArray)
             for robot = 1:nRobot
                 ekfs(robot).correction_shared(sharedInfoArray);
+                if ekfs(robot).do_reset
+                    fprintf('Robot %d resetting at t=%d\n', robot, k)
+                    ekfs(robot).reset();
+                    tResets{robot}(end+1) = k;
+
+                    x0 = percorsi(k, 1, robot);
+                    y0 = percorsi(k, 2, robot);
+                    theta0 = percorsi(k, 3, robot);
+                    TsGL(:, :, 1, robot) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
+                    TsLG(:, :, 1, robot) = TsGL(:, :, 1, robot)^-1;
+                end
             end
         end
     end

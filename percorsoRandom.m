@@ -3,7 +3,7 @@ function percorso = percorsoRandom(data, passi_traj, seed)
 
     gradi = pi/180;
     
-    passoOdometrico = 0.05;
+    passoOdometrico = 0.01;
     nPassi = passi_traj;
     dVera = data.dVera;
     deltaRvera = data.deltaRvera;

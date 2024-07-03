@@ -5,7 +5,7 @@ if DISEGNA_ANIMAZIONE
     end
 
     if nRobot > 1
-        disp("Premi invio...")
+        disp('Premi invio...')
         pause
     end
     
@@ -22,7 +22,7 @@ end
 
 if DISEGNA_PLOT
     %%
-    colors = {'#0072BD', '#D95319', '#EDB120', '#7E2F8E', '#77AC30', '#4DBEEE', '#A2142F', '#0072BD', '#D95319', '#EDB120', '#7E2F8E', '#77AC30', '#4DBEEE', '#A2142F'};
+    colors = {'#0072BD', '#D95319', '#EDB120', '#7E2F8E', '#77AC30', '#4DBEEE', '#A2142F', '#1010FF', '#121A00', '#FFCAC1', '#10FF10', '#FF10FF', '#00FFCA', '#FF129E'};
     names = {'Tag1', 'Tag2', 'Tag3', 'Tag4', 'Tag5', 'Tag6', 'Tag7', 'Tag8', 'Tag9', 'Tag10', 'Tag11', 'Tag12', 'Tag13', 'Tag14'};
     t_min = 1;
     t_max = nPassi;
@@ -38,7 +38,7 @@ if DISEGNA_PLOT
         hAx1 = axes('Position', [0.05, 0.1, 0.4, 0.8]);
         for tag = 1:nTag
             posLoc = [x(tag, :); y(tag, :); ones(1, length(time))];
-            posGlob = TsGL(:, :, robot)*posLoc;
+            posGlob = TsGL(:, :, 1, robot)*posLoc;
             plot(time, posGlob(1, :), 'LineWidth', 1.5, 'Color', colors{tag}, 'DisplayName', names{tag})
             hold on
             plot(time, cTag(tag, 1)*ones(1, length(time)), '--', 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', '')
@@ -62,7 +62,7 @@ if DISEGNA_PLOT
         hAx2 = axes('Position', [0.55, 0.1, 0.4, 0.8]);
         for tag = 1:nTag
             posLoc = [x(tag, :); y(tag, :); ones(1, length(time))];
-            posGlob = TsGL(:, :, robot)*posLoc;
+            posGlob = TsGL(:, :, 1, robot)*posLoc;
             plot(time, posGlob(2, :), 'LineWidth', 1.5, 'Color', colors{tag}, 'DisplayName', names{tag})
             hold on
             plot(time, cTag(tag, 2)*ones(1, length(time)), '--', 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', '')

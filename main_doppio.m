@@ -20,8 +20,8 @@ for i = 0:1
     fprintf('Sharing: %d\n', sharing)
 
     ekfs = FedEkf.empty(nRobot, 0);
-    TsGL = zeros(3, 3, nRobot);
-    TsLG = zeros(3, 3, nRobot);
+    TsGL = zeros(3, 3, 1, nRobot);
+    TsLG = zeros(3, 3, 1, nRobot);
     
     main_simulazione;
 

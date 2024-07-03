@@ -24,7 +24,7 @@ for robot = 1:nRobot
     plot(xVett(k), yVett(k), 'ko')  % pos attuale vera
 
     posLoc = [ekfs(robot).xHatSLAM(1:2, k); 1];
-    posGlob = TsGL(:, :, robot)*posLoc;
+    posGlob = TsGL(:, :, 1, robot)*posLoc;
     plot(posGlob(1), posGlob(2), 'o') % pos attuale stimata
 
     for indTag = 1:nTag
@@ -46,12 +46,12 @@ for robot = 1:nRobot
             x_ti = x_ti + xTag_ij*ekfs(robot).pesi(indTag, indPhi);
             y_ti = y_ti + yTag_ij*ekfs(robot).pesi(indTag, indPhi);
             posLoc = [xTag_ij, yTag_ij, 1]';
-            posGlob = TsGL(:, :, robot)*posLoc;
+            posGlob = TsGL(:, :, 1, robot)*posLoc;
             plot(posGlob(1), posGlob(2), 'b.', 'MarkerSize', max(7, ceil(20*ekfs(robot).pesi(indTag,indPhi))))
             text(posGlob(1) - 0.2, posGlob(2), num2str(indTag), 'FontSize', 12);
         end
         posLoc = [x_ti, y_ti, 1]';
-        posGlob = TsGL(:, :, robot)*posLoc;
+        posGlob = TsGL(:, :, 1, robot)*posLoc;
         plot(posGlob(1), posGlob(2), '*') % posizione media stimata tag
     end
 

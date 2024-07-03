@@ -37,6 +37,9 @@ classdef FedEkf < handle
         varX
         varY
         covXY
+        do_reset
+        nReset
+        lastMeasures
     end
     
     methods
@@ -103,6 +106,9 @@ classdef FedEkf < handle
             obj.varX = zeros(1, nTag);
             obj.varY = zeros(1, nTag);
             obj.covXY = zeros(1, nTag);
+
+            obj.nReset = 0;
+            obj.do_reset = 0;
         end
         
         %
@@ -143,6 +149,7 @@ classdef FedEkf < handle
         
         % 
         function [obj] = correction(obj, misureRange)
+            obj.lastMeasures = misureRange;
             nTag = obj.data.nTag;
 
             % Stima a priori posizione robot
@@ -322,20 +329,20 @@ classdef FedEkf < handle
                 y_i   = obj.xHatSLAM(1+ind0, obj.k+1);
                 rho_i = obj.xHatSLAM(2+ind0, obj.k+1);
 
-                xTagMediato = 0.0;
-                yTagMediato = 0.0;
+                phiTagMediato = 0.0;
 
                 for indPhi = 1:nPhi
                     phi_ij = obj.xHatSLAM(2+ind0+indPhi, obj.k+1);
-                    cosPhi_ij = cos(phi_ij);
-                    sinPhi_ij = sin(phi_ij);
-                    xTag_ij = x_i + rho_i*cosPhi_ij;
-                    yTag_ij = y_i + rho_i*sinPhi_ij;
                     pesoTag = obj.pesi(indTag, indPhi);
 
-                    xTagMediato = xTagMediato + xTag_ij*pesoTag;
-                    yTagMediato = yTagMediato + yTag_ij*pesoTag;
+                    phiTagMediato = phiTagMediato + phi_ij*pesoTag;
                 end
+
+                cosPhi_ij = cos(phiTagMediato);
+                sinPhi_ij = sin(phiTagMediato);
+                xTagMediato = x_i + rho_i*cosPhi_ij;
+                yTagMediato = y_i + rho_i*sinPhi_ij;
+
                 obj.xHatTagStoria(indTag, obj.k+1) = xTagMediato;
                 obj.yHatTagStoria(indTag, obj.k+1) = yTagMediato;
             end
@@ -439,10 +446,21 @@ classdef FedEkf < handle
                     vars(:, indTag, size(posTagRobot, 3)) = [varX_prime, varY_prime]';
                 end
             end
-
+            
+            % check reset
             if isempty(posTagRobot)
+                if obj.data.reset
+                    if length(other_measures) > 1 || other_measures(1).idx ~= obj.id
+                        obj.nReset = obj.nReset + 1;
+                    end
+                    if obj.nReset >= obj.data.resetThr
+                        obj.do_reset = 1;
+                    end
+                end
+
                 return
             end
+            obj.nReset = 0;
 
             % vars = (0 * vars + 1);    % FIXME
             % temp = 1 ./ vars;
@@ -455,7 +473,7 @@ classdef FedEkf < handle
                 for indTag = 1:nTag
                     indMat = indMatCum(indTag);
     
-                    var = 0.1;
+                    var = 1.0;
                     fused_var_x = var; %1 / sum(1 ./ vars(1, indTag, :));
                     fused_var_y = var; %1 / sum(1 ./ vars(2, indTag, :));
     
@@ -482,6 +500,7 @@ classdef FedEkf < handle
                         yTag_ij = y_i + rho_i*sinPhi_ij;
                         deltaMisuraX_ij = misuraX_ij - xTag_ij;
                         deltaMisuraY_ij = misuraY_ij - yTag_ij;
+
                         obj.innovazioneX(indMat+indPhi) = deltaMisuraX_ij;
                         obj.innovazioneY(indMat+indPhi) = deltaMisuraY_ij;
                         probMisuraX_ij(indPhi) = exp(-deltaMisuraX_ij^2/(2*sigmaX^2));
@@ -516,6 +535,61 @@ classdef FedEkf < handle
     
             % Aggiornamento pesi
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
+        end
+
+        %
+        function [obj] = reset(obj)
+            data_ = obj.data;
+
+            nTag = data_.nTag;
+            nPhiMax = data_.nPhi;
+            obj.nPhiVett = data_.nPhi*ones(1, nTag);
+            nPassi = data_.nPassi;
+
+            obj.innovazione = zeros(nTag*nPhiMax, 1);
+            obj.pesi = (1/nPhiMax)*ones(nTag, nPhiMax);
+            obj.xHatSLAM = zeros(3+(3+nPhiMax)*nTag, nPassi);
+            obj.P = zeros(3+(3+nPhiMax)*nTag, 3+(3+nPhiMax)*nTag);
+            obj.Ptag = diag([0, 0, obj.sigmaD^2, obj.sigmaPhi^2*ones(1, nPhiMax)]);
+
+            obj.xHatSLAMmeno = zeros(3+(3+nPhiMax)*nTag, 1);
+            obj.F = eye(3+(3+nPhiMax)*nTag);
+            obj.W = zeros(3+(3+nPhiMax)*nTag, 2);
+            obj.H = zeros(nTag*nPhiMax, 3+(3+nPhiMax)*nTag);
+            obj.Rs = zeros(nTag*nPhiMax, nTag*nPhiMax);
+
+            obj.xHatIndices = [1 3 (3+nPhiMax)*ones(1, nTag)];
+            obj.xHatCumIndices = cumsum(obj.xHatIndices(1:end-1));
+
+            obj.Hx = zeros(nTag*nPhiMax,3+(3+nPhiMax)*nTag);
+            obj.Hy = zeros(nTag*nPhiMax,3+(3+nPhiMax)*nTag);
+            obj.innovazioneX = zeros(nTag*nPhiMax, 1);
+            obj.innovazioneY = zeros(nTag*nPhiMax, 1);
+            obj.RsX = zeros(nTag*nPhiMax, nTag*nPhiMax);
+            obj.RsY = zeros(nTag*nPhiMax, nTag*nPhiMax);
+
+            % Inizializzazione
+            obj.xHatSLAM(1:3, obj.k+1) = [0, 0, 0];
+            obj.xHatSLAM(4:nPhiMax+3:end, obj.k+1) = obj.xHatSLAM(1, obj.k+1);
+            obj.xHatSLAM(5:nPhiMax+3:end, obj.k+1) = obj.xHatSLAM(2, obj.k+1);
+            obj.xHatSLAM(6:nPhiMax+3:end, obj.k+1) = obj.lastMeasures;
+            for jndPhi = 1:nPhiMax
+                obj.xHatSLAM(6+jndPhi:nPhiMax+3:end, obj.k+1) = data_.possibiliPhi(jndPhi);
+            end
+            for indTag = 1:nTag    
+                obj.P(4+(3+nPhiMax)*(indTag-1):3+(3+nPhiMax)*indTag, 4+(3+nPhiMax)*(indTag-1):3+(3+nPhiMax)*indTag) = obj.Ptag;
+            end
+
+            obj.startPruning = zeros(1, nTag);
+            obj.stepStartPruning = obj.k + data_.stepStartPruning;
+
+            obj.varX = zeros(1, nTag);
+            obj.varY = zeros(1, nTag);
+            obj.covXY = zeros(1, nTag);
+
+            obj.nReset = 0;
+            obj.data.resetThr = obj.data.resetThr + obj.stepStartPruning;
+            obj.do_reset = 0;
         end
     end % methods
 end % class

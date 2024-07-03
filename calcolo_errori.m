@@ -28,12 +28,12 @@ for robot = 1:nRobot
     end
 
     posHatTagLoc = [xHatTag'; yHatTag'; ones(1, nTag)];
-    posHatTagGlob = (TsGL(:, :, robot)*posHatTagLoc)';
+    posHatTagGlob = (TsGL(:, :, 1, robot)*posHatTagLoc)';
     
     erroriAssolutiTag(robot, :) = sqrt((posHatTagGlob(:, 1)-cTag(:, 1)).^2+(posHatTagGlob(:, 2)-cTag(:, 2)).^2);
 
     posRobLoc = [x_r; y_r; 1];
-    posRobGlob = TsGL(:, :, robot)*posRobLoc;
+    posRobGlob = TsGL(:, :, 1, robot)*posRobLoc;
     erroreAssolutoRobot(robot) = sqrt((posRobGlob(1)-xVett(k))^2+(posRobGlob(2)-yVett(k))^2);
     
     if displayErrori

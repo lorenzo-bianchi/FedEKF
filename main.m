@@ -5,8 +5,8 @@ load('percorsi.mat', 'percorsi');
 dati
 
 ekfs = FedEkf.empty(nRobot, 0);
-TsGL = zeros(3, 3, nRobot);
-TsLG = zeros(3, 3, nRobot);
+TsGL = zeros(3, 3, 1, nRobot);
+TsLG = zeros(3, 3, 1, nRobot);
 
 main_simulazione;
 
