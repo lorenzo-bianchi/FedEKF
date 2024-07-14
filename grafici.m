@@ -4,13 +4,15 @@ if DISEGNA_ANIMAZIONE
         figure(robot)
     end
 
+    pause(5)
+
     if nRobot > 1
         disp('Premi invio...')
         pause
     end
     
     for k = 1:nPassi
-        if mod(k,5) == 1
+        if mod(k,10) == 1
             disegna
         end
     end

@@ -38,11 +38,11 @@ function percorso = percorsoRandom(data, passi_traj, seed)
         distanzaTag = Inf; %sqrt((xVett(k)-cTag(1,1))^2+(yVett(k)-cTag(1,2))^2);
         % if distanzaTag < 0.2
         %     if abs(atan2(cTag(1,2)-yVett(k), cTag(1,1)-xVett(k))-thetaVett(k)) > 20*pi/180
-        %         distanzaTag = Inf;
+        %         distanzaTag = 1e9;
         %     end
         % end
       
-        if distanza < clearance || distanzaTag < 0.2 || rand > 0.99 % ho da girà!
+        if distanza < clearance || distanzaTag < 0.2 || rand > 0.995 % ho da girà!
             curvaDaFare = max(uno, rand*cinque); % è la curva in gradi che deve essere effettuata
             passiCurvaDaFare = round(curvaDaFare/uno); % è il numero di passi che il robot impiegherà per fare la curva
             gradiPerPasso = curvaDaFare/passiCurvaDaFare;

@@ -5,7 +5,7 @@ DISEGNA_ANIMAZIONE = 0;
 DISEGNA_ULTIMO = 0;
 DISEGNA_PLOT = 0;
 DISEGNA_ICP = 0;
-displayErrori = 1;
+displayErrori = 0;
 
 data = struct();
 
@@ -16,18 +16,18 @@ nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza
 pruning = 1;
 minZerosStartPruning = ceil(nPhi*0.6);
 stepStartPruning = 100;         % mettere valore piccolo per evitare errori iniziali
-sharing = 0;
-stepStartSharing = 200;
+sharing = 1;
+stepStartSharing = 400;
 reset = 0;
-resetThr = 100;
+resetThr = 200;
 
-sigmaDistanza = 0.01; % std in m della misura di range
+sigmaDistanza = 0.2; % std in m della misura di range
 sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla deviazione standard dell'errore di misura
 sigmaMisuraMedia = 1.0;
 
 % ransac
 numIterations = 50;
-distanceThreshold = 0.2;
+distanceThreshold = 0.1;
 percentMinInliers = 0.8;
 
 Nstep = 1; % passi tra una misura e la successiva
@@ -92,7 +92,7 @@ data.KLvera = KLvera;
 
 data.pruning = pruning;
 data.minZerosStartPruning = minZerosStartPruning;
-data.stepStartPruning = stepStartPruning ;
+data.stepStartPruning = stepStartPruning;
 
 data.numIterations = numIterations;
 data.distanceThreshold = distanceThreshold;

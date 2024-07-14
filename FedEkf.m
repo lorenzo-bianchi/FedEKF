@@ -40,6 +40,7 @@ classdef FedEkf < handle
         do_reset
         nReset
         lastMeasures
+        varsStoria
     end
     
     methods
@@ -106,6 +107,8 @@ classdef FedEkf < handle
             obj.varX = zeros(1, nTag);
             obj.varY = zeros(1, nTag);
             obj.covXY = zeros(1, nTag);
+
+            obj.varsStoria = zeros(2, nTag, nPassi);
 
             obj.nReset = 0;
             obj.do_reset = 0;
@@ -183,13 +186,14 @@ classdef FedEkf < handle
                     
                     obj.innovazione(indMat+indPhi) = deltaMisura_ij;
                     probMisura_ij(indPhi) = exp(-deltaMisura_ij^2/(2*obj.sigmaD^2));
+                    probMisura_ij(indPhi) = max(probMisura_ij(indPhi), 1e-100);
                     obj.pesi(indTag,indPhi) = obj.pesi(indTag,indPhi)*probMisura_ij(indPhi);
     
                     obj.H(indMat+indPhi, 1:2) = [x_r-xTag_ij, y_r-yTag_ij];
                     obj.H(indMat+indPhi, 0+ind0) = xTag_ij-x_r;
                     obj.H(indMat+indPhi, 1+ind0) = yTag_ij-y_r;
                     obj.H(indMat+indPhi, 2+ind0) = (xTag_ij-x_r)*cosPhi_ij+(yTag_ij-y_r)*sinPhi_ij;
-                    obj.H(indMat+indPhi, 2+ind0+indPhi)= ((x_r-xTag_ij)*sinPhi_ij+(yTag_ij-y_r)*cosPhi_ij)*rho_i;
+                    obj.H(indMat+indPhi, 2+ind0+indPhi) = ((x_r-xTag_ij)*sinPhi_ij+(yTag_ij-y_r)*cosPhi_ij)*rho_i;
                     obj.H(indMat+indPhi, :) = obj.H(indMat+indPhi, :) / misuraRange_ij;
                 end
                 lambda_ij = probMisura_ij/sum(probMisura_ij);
@@ -321,7 +325,7 @@ classdef FedEkf < handle
         end
     
         %
-        function [obj] = save_tags(obj)
+        function [obj] = save_history(obj)
             nTag = obj.data.nTag;
             for indTag = 1:nTag
                 nPhi = obj.nPhiVett(indTag);
@@ -346,15 +350,8 @@ classdef FedEkf < handle
 
                 obj.xHatTagStoria(indTag, obj.k+1) = xTagMediato;
                 obj.yHatTagStoria(indTag, obj.k+1) = yTagMediato;
-            end
-        end
 
-        %
-        function structCondivisa = data_to_share(obj)
-            nTag = obj.data.nTag;
-            for indTag = 1:nTag
-                ind0 = obj.xHatCumIndices(indTag+1);
-                
+                % varianze
                 ind_x = 0+ind0;
                 ind_y = 1+ind0;
                 ind_r = 2+ind0;
@@ -398,7 +395,11 @@ classdef FedEkf < handle
                     return
                 end
             end
-            
+            obj.varsStoria(:, :, obj.k+1) = [obj.varX; obj.varY];
+        end
+
+        %
+        function structCondivisa = data_to_share(obj)           
             tags = [obj.xHatTagStoria(:, obj.k+1) obj.yHatTagStoria(:, obj.k+1)]';
             vars = [obj.varX; obj.varY; obj.covXY];
             structCondivisa = struct('id', obj.id, 'tags', tags, 'vars', vars);
@@ -463,20 +464,24 @@ classdef FedEkf < handle
             end
             obj.nReset = 0;
 
-            % vars = (0 * vars + 1);    % FIXME
-            % temp = 1 ./ vars;
-            % W_ = temp ./ sum(temp, 3);
-            % measures_weighted  = sum(W_ .* posTagRobot, 3);
+            vars = (0 * vars + 1);    % FIXME
+            temp = 1 ./ vars;
+            W_ = temp ./ sum(temp, 3);
+            measures_weighted  = sum(W_ .* posTagRobot, 3);
 
             indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
-            for idx_pos = 1:size(posTagRobot, 3)
-                pos = posTagRobot(:, :, idx_pos);
+            for idx_pos = 1 %1:size(posTagRobot, 3)
+                % pos = posTagRobot(:, :, idx_pos);
                 for indTag = 1:nTag
                     indMat = indMatCum(indTag);
     
-                    var = 1.0;
-                    fused_var_x = var; %1 / sum(1 ./ vars(1, indTag, :));
-                    fused_var_y = var; %1 / sum(1 ./ vars(2, indTag, :));
+                    var_ = 1.0;
+                    fused_var_x = var_;
+                    fused_var_y = var_;
+                    % fused_var_x = vars(1, indTag, idx_pos);
+                    % fused_var_y = vars(2, indTag, idx_pos);
+                    % fused_var_x = 1 / sum(1 ./ vars(1, indTag, :));
+                    % fused_var_y = 1 / sum(1 ./ vars(2, indTag, :));
     
                     sigmaX = sqrt(fused_var_x);
                     sigmaY = sqrt(fused_var_y);
@@ -487,8 +492,10 @@ classdef FedEkf < handle
                     y_i   = obj.xHatSLAMmeno(1+ind0);
                     rho_i = obj.xHatSLAMmeno(2+ind0);
     
-                    misuraX_ij = pos(1, indTag); %measures_weighted(1, indTag);
-                    misuraY_ij = pos(2, indTag); %measures_weighted(2, indTag);
+                    % misuraX_ij = pos(1, indTag);
+                    % misuraY_ij = pos(2, indTag);
+                    misuraX_ij = measures_weighted(1, indTag);
+                    misuraY_ij = measures_weighted(2, indTag);
     
                     probMisuraX_ij = zeros(nPhi, 1);
                     probMisuraY_ij = zeros(nPhi, 1);
@@ -505,8 +512,11 @@ classdef FedEkf < handle
                         obj.innovazioneX(indMat+indPhi) = deltaMisuraX_ij;
                         obj.innovazioneY(indMat+indPhi) = deltaMisuraY_ij;
                         probMisuraX_ij(indPhi) = exp(-deltaMisuraX_ij^2/(2*sigmaX^2));
+                        probMisuraX_ij(indPhi) = max(probMisuraX_ij(indPhi), 1e-100);
                         probMisuraY_ij(indPhi) = exp(-deltaMisuraY_ij^2/(2*sigmaY^2));
+                        probMisuraY_ij(indPhi) = max(probMisuraY_ij(indPhi), 1e-100);
                         obj.pesi(indTag, indPhi) = obj.pesi(indTag, indPhi)*probMisuraX_ij(indPhi)*probMisuraY_ij(indPhi);
+                        obj.pesi(indTag, indPhi) = max(obj.pesi(indTag, indPhi), 1e-100);
                     
                         obj.Hx(indMat+indPhi, 0+ind0) = 1;
                         obj.Hy(indMat+indPhi, 1+ind0) = 1;

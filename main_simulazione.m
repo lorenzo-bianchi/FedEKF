@@ -4,7 +4,7 @@ for robot = 1:nRobot
     y0 = percorsi(1, 2, robot);
     theta0 = percorsi(1, 3, robot);
     TsGL{robot}(:, :, end+1) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
-    TsLG{robot}(:, :, end+1) = TsGL{robot}(:, :, 1)^-1;
+    TsLG{robot}(:, :, end+1) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]]^-1;
 
     misureRange = sqrt((x0-cTag(:,1)).^2+(y0-cTag(:,2)).^2) + sigmaDistanza*randn;
 
@@ -40,7 +40,7 @@ for k = 2:nPassi
         end
 
         % Salva le coordinate cartesiane dei tag
-        ekfs(robot).save_tags();
+        ekfs(robot).save_history();
     end
 
     % CORREZIONE con altre misure
@@ -67,7 +67,7 @@ for k = 2:nPassi
                     y0 = percorsi(k, 2, robot);
                     theta0 = percorsi(k, 3, robot);
                     TsGL{robot}(:, :, end+1) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]];
-                    TsLG{robot}(:, :, end+1) = TsGL{robot}(:, :, end)^-1;
+                    TsLG{robot}(:, :, end+1) = [[cos(theta0) -sin(theta0) x0]; [sin(theta0) cos(theta0) y0]; [0 0 1]]^-1;
                 end
             end
         end
