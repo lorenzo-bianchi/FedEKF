@@ -3,6 +3,7 @@ function [bestR, bestT, inliers] = ransacRototranslation(A, B, numIterations, di
     bestInlierCount = 0;
     bestR = eye(2);
     bestT = [0; 0];
+    found_candidate = false;
 
     for i = 1:numIterations
         % Randomly select 3 points
@@ -20,11 +21,11 @@ function [bestR, bestT, inliers] = ransacRototranslation(A, B, numIterations, di
         distances = sqrt(sum((A_transformed - B).^2, 2));
         
         % Count inliers
-        inliers = find(distances < distanceThreshold);
-        inlierCount = length(inliers);
+        inlierCount = length(find(distances < distanceThreshold));
         
         % Update the best transformation if current one is better
         if inlierCount > bestInlierCount && inlierCount >= minInliers
+            found_candidate = true;
             bestInlierCount = inlierCount;
             bestR = R;
             bestT = T;
@@ -32,7 +33,11 @@ function [bestR, bestT, inliers] = ransacRototranslation(A, B, numIterations, di
     end
 
     % Final inliers based on best transformation
-    A_transformed = (bestR * A' + bestT)';
-    distances = sqrt(sum((A_transformed - B).^2, 2));
-    inliers = find(distances < distanceThreshold);
+    if found_candidate
+        A_transformed = (bestR * A' + bestT)';
+        distances = sqrt(sum((A_transformed - B).^2, 2));
+        inliers = find(distances < distanceThreshold);
+    else
+        inliers = [];
+    end
 end
