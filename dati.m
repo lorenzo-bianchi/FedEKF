@@ -11,15 +11,15 @@ data = struct();
 
 nRobot = 6;
 
-nPassi = 1000;
-nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
+nPassi = 1200;
+nPhi = 16; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
 pruning = 1;
 minZerosStartPruning = ceil(nPhi*0.6);
 stepStartPruning = 100;         % mettere valore piccolo per evitare errori iniziali
 sharing = 1;
 stepStartSharing = 400;
-reset = 0;
-resetThr = 200;
+reset = 1;
+resetThr = 100;
 
 sigmaDistanza = 0.2; % std in m della misura di range
 sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla deviazione standard dell'errore di misura
@@ -27,8 +27,8 @@ sigmaMisuraMedia = 1.0;
 
 % ransac
 numIterations = 50;
-distanceThreshold = 0.1;
-percentMinInliers = 0.8;
+distanceThreshold = 0.2;
+percentMinInliers = 0.5;
 
 Nstep = 1; % passi tra una misura e la successiva
 possibiliPhi = linspace(-pi+2*pi/nPhi, pi, nPhi);

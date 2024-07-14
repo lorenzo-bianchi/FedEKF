@@ -406,7 +406,7 @@ classdef FedEkf < handle
         end
 
         %
-        function [obj] = correction_shared(obj, other_measures)
+        function [obj] = correction_shared(obj, all_measures)
             nTag = obj.data.nTag;
 
             thisRobotTags = [obj.xHatTagStoria(:, obj.k+1) obj.yHatTagStoria(:, obj.k+1)];
@@ -416,11 +416,31 @@ classdef FedEkf < handle
 
             posTagRobot = zeros(2, nTag, 0);
             vars = zeros(2, nTag, 0);
-            for idx = 1:length(other_measures)
-                if obj.id == other_measures(idx).id
+
+            other_measures = struct('id', {}, 'tags', {}, 'vars', {});
+            for idx = 1:length(all_measures)
+                if obj.id == all_measures(idx).id
                     continue
                 end
+                other_measures(end+1) = all_measures(idx);
+            end
 
+            if length(other_measures) < 2
+                return;
+            end
+
+            inliersGood = [];
+            for robot1 = 1:length(other_measures)
+                tags1 = other_measures(robot1).tags;
+                for robot2 = robot1+1:length(other_measures)
+                    tags2 = other_measures(robot2).tags;
+                    [~, ~, inliers] = ransacRototranslation(tags1', tags2', obj.data.numIterations, obj.data.distanceThreshold, round(obj.data.percentMinInliers * nTag));
+                end
+                inliersGood = [inliersGood inliers'];
+            end
+            inliersGood = unique(inliersGood); %% TODO cambia varianza in base alle ripetizioni
+
+            for idx = 1:length(other_measures)
                 otherRobotTags = other_measures(idx).tags;
                 [R, t, inliers] = ransacRototranslation(otherRobotTags', thisRobotTags, obj.data.numIterations, obj.data.distanceThreshold, round(obj.data.percentMinInliers * nTag));
                 if isempty(inliers)
@@ -428,6 +448,9 @@ classdef FedEkf < handle
                 end
 
                 T = [R, t; zeros(1, 2), 1];
+
+                other_measures(idx).T = T;
+                other_measures(idx).inliers = inliers;
 
                 % Applica rototraslazione alle posizioni dei tag
                 temp = T*[otherRobotTags; ones(1, nTag)];
@@ -448,6 +471,10 @@ classdef FedEkf < handle
                     vars(:, indTag, size(posTagRobot, 3)) = [varX_prime, varY_prime]';
                 end
             end
+
+            if size(posTagRobot, 3) > 2
+                1;
+            end
             
             % check reset
             if isempty(posTagRobot)
@@ -464,9 +491,12 @@ classdef FedEkf < handle
             end
             obj.nReset = 0;
 
-            vars = (0 * vars + 1);    % FIXME
-            temp = 1 ./ vars;
-            W_ = temp ./ sum(temp, 3);
+            % vars = (0 * vars + 1);    % FIXME
+            % temp = 1 ./ vars;
+            % W_ = temp ./ sum(temp, 3);
+
+            W_ = zeros(2, nTag, size(posTagRobot, 3));
+            W_(:, inliersGood, :) = 1 / size(posTagRobot, 3);
             measures_weighted  = sum(W_ .* posTagRobot, 3);
 
             indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
@@ -475,7 +505,7 @@ classdef FedEkf < handle
                 for indTag = 1:nTag
                     indMat = indMatCum(indTag);
     
-                    var_ = 1.0;
+                    var_ = 1e4;
                     fused_var_x = var_;
                     fused_var_y = var_;
                     % fused_var_x = vars(1, indTag, idx_pos);
