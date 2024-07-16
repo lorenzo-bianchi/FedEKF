@@ -429,28 +429,27 @@ classdef FedEkf < handle
                 return;
             end
 
-            inliersGood = [];
-            for robot1 = 1:length(other_measures)
+            inliersGood = zeros(2, nTag, length(other_measures));
+            for robot1 = 1:length(other_measures)-1
                 tags1 = other_measures(robot1).tags;
                 for robot2 = robot1+1:length(other_measures)
                     tags2 = other_measures(robot2).tags;
                     [~, ~, inliers] = ransacRototranslation(tags1', tags2', obj.data.numIterations, obj.data.distanceThreshold, round(obj.data.percentMinInliers * nTag));
+                    inliersGood(:, inliers, robot1) = 1;
+                    inliersGood(:, inliers, robot2) = 1;
                 end
-                inliersGood = [inliersGood inliers'];
             end
-            inliersGood = unique(inliersGood); %% TODO cambia varianza in base alle ripetizioni
 
+            to_be_removed = [];
             for idx = 1:length(other_measures)
                 otherRobotTags = other_measures(idx).tags;
                 [R, t, inliers] = ransacRototranslation(otherRobotTags', thisRobotTags, obj.data.numIterations, obj.data.distanceThreshold, round(obj.data.percentMinInliers * nTag));
                 if isempty(inliers)
+                    to_be_removed(end+1) = idx;
                     continue
                 end
 
                 T = [R, t; zeros(1, 2), 1];
-
-                other_measures(idx).T = T;
-                other_measures(idx).inliers = inliers;
 
                 % Applica rototraslazione alle posizioni dei tag
                 temp = T*[otherRobotTags; ones(1, nTag)];
@@ -472,10 +471,6 @@ classdef FedEkf < handle
                 end
             end
 
-            if size(posTagRobot, 3) > 2
-                1;
-            end
-            
             % check reset
             if isempty(posTagRobot)
                 if obj.data.reset
@@ -495,8 +490,10 @@ classdef FedEkf < handle
             % temp = 1 ./ vars;
             % W_ = temp ./ sum(temp, 3);
 
-            W_ = zeros(2, nTag, size(posTagRobot, 3));
-            W_(:, inliersGood, :) = 1 / size(posTagRobot, 3);
+            inliersGood(:, :, to_be_removed) = [];
+            den = sum(inliersGood, 3);
+            den(den == 0) = 1;
+            W_ = inliersGood ./ den;
             measures_weighted  = sum(W_ .* posTagRobot, 3);
 
             indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
@@ -504,8 +501,8 @@ classdef FedEkf < handle
                 % pos = posTagRobot(:, :, idx_pos);
                 for indTag = 1:nTag
                     indMat = indMatCum(indTag);
-    
-                    var_ = 1e4;
+
+                    var_ = 1.0;
                     fused_var_x = var_;
                     fused_var_y = var_;
                     % fused_var_x = vars(1, indTag, idx_pos);

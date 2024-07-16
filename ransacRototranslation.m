@@ -5,9 +5,13 @@ function [bestR, bestT, inliers] = ransacRototranslation(A, B, numIterations, di
     bestT = [0; 0];
     found_candidate = false;
 
-    for i = 1:numIterations
-        % Randomly select 3 points
-        indices = randperm(numPoints, 3);
+    combinations = nchoosek(1:numPoints, 3);
+
+    for i = 1:size(combinations, 1)
+        if i > numIterations
+            break
+        end
+        indices = combinations(i, :);
         A_sample = A(indices, :);
         B_sample = B(indices, :);
 

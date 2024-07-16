@@ -1,0 +1,332 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%Creator: (MATLAB, The MathWorks, Inc. Version 24.1.0.2537033 R2024a. Operating System: Linux 6.5.0-41-generic #41~22.04.2-Ubuntu SMP PREEMPT_DYNAMIC Mon Jun  3 11:32:55 UTC 2 x86_64)
+%%Title: ./icp_ransac_post.eps
+%%CreationDate: 2024-07-15T15:23:00
+%%Pages: (atend)
+%%BoundingBox:    0     0   352   290
+%%LanguageLevel: 3
+%%EndComments
+/bd{bind def}bind def
+/ld{load def}bd
+/GR/grestore ld
+/GS/gsave ld
+/RM/rmoveto ld
+/C/curveto ld
+/t/show ld
+/L/lineto ld
+/RL/rlineto ld
+/ML/setmiterlimit ld
+/CT/concat ld
+/f/fill ld
+/N/newpath ld
+/S/stroke ld
+/CC/setcmykcolor ld
+/A/ashow ld
+/cp/closepath ld
+/RC/setrgbcolor ld
+/LJ/setlinejoin ld
+/GC/setgray ld
+/LW/setlinewidth ld
+/LC/setlinecap ld
+/LJ/setlinejoin ld
+/SD/setdash ld
+/M/moveto ld
+/TX/translate ld
+/R/rotate ld
+/SC/scale ld
+
+/CIRC {0 360 arc}bd
+/F {exch findfont exch scalefont setfont}bd
+/edef{ exch def } def
+/scaleImg{ % width height outputDPI scaleImg
+   /outputDPI edef
+   /height edef
+   /width edef
+   /psDPI 72 def
+   /sDPI psDPI outputDPI div def % DPI scale
+   width sDPI mul % width * (psDPI / outputDPI)
+   height sDPI mul
+   scale
+} def
+
+% LineAttribute methods.linewidth linejoin linecap [dashpattern] dashOffset colorVal(s) <method>
+/LAG {setgray setdash setlinecap setlinejoin setlinewidth} bd
+/LAR {setrgbcolor setdash setlinecap setlinejoin setlinewidth} bd
+/LAC {setcmykcolor setdash setlinecap setlinejoin setlinewidth} bd
+
+% draw line impl
+/DL { % VertexList NVerts StartPt DL
+  N moveto { lineto } repeat stroke} def
+% draw unfilled polyline impl
+/DPL { % VertexList NVerts StartPt DPL
+  N moveto { lineto } repeat closepath stroke} def
+% draw filled polyline impl
+/DPLF { % VertexList NVerts StartPt DPLF
+  N moveto { lineto } repeat closepath fill } def
+/DRL { % VertexList NVerts StartPt DRL
+  N moveto { rlineto } repeat stroke} def
+% draw unfilled polyline impl
+/DRPL { % VertexList NVerts StartPt DRPL
+  N moveto { rlineto } repeat closepath stroke} def
+% draw filled polyline impl
+/DRPLF { % VertexList NVerts StartPt DRPLF
+  N moveto { rlineto } repeat closepath fill } def
+
+%%Page: 1 1
+%%PageBoundingBox:    0     0   352   290
+%%BeginPageSetup
+N
+0 0 M
+351.25 0 L
+351.25 289.73 L
+0 289.73 L
+cp
+clip
+1.00 GC
+0 289.73 351.25 289.73 351.25 0 3 0 0 DPLF
+[  0.75 0 0 -0.75 0 289.725] CT
+%%EndPageSetup
+-38.67 -25.02 TX
+1.00 LW
+73 31.35 507 31.35 507 373.65 3 73 373.65 DPLF
+0.67 2 0 [] 0 0.87 LAG
+87.01 31.35 1 87.01 373.65 DL
+127.11 31.35 1 127.11 373.65 DL
+167.21 31.35 1 167.21 373.65 DL
+207.31 31.35 1 207.31 373.65 DL
+247.41 31.35 1 247.41 373.65 DL
+287.51 31.35 1 287.51 373.65 DL
+327.61 31.35 1 327.61 373.65 DL
+367.71 31.35 1 367.71 373.65 DL
+407.82 31.35 1 407.82 373.65 DL
+447.92 31.35 1 447.92 373.65 DL
+488.02 31.35 1 488.02 373.65 DL
+73 347.43 1 507 347.43 DL
+73 307.33 1 507 307.33 DL
+73 267.22 1 507 267.22 DL
+73 227.12 1 507 227.12 DL
+73 187.02 1 507 187.02 DL
+73 146.92 1 507 146.92 DL
+73 106.82 1 507 106.82 DL
+73 66.72 1 507 66.72 DL
+0.67 2 2 [] 0 0.13 LAG
+507 373.65 1 73 373.65 DL
+507 31.35 1 73 31.35 DL
+87.01 369.31 1 87.01 373.65 DL
+127.11 369.31 1 127.11 373.65 DL
+167.21 369.31 1 167.21 373.65 DL
+207.31 369.31 1 207.31 373.65 DL
+247.41 369.31 1 247.41 373.65 DL
+287.51 369.31 1 287.51 373.65 DL
+327.61 369.31 1 327.61 373.65 DL
+367.71 369.31 1 367.71 373.65 DL
+407.82 369.31 1 407.82 373.65 DL
+447.92 369.31 1 447.92 373.65 DL
+488.02 369.31 1 488.02 373.65 DL
+87.01 35.69 1 87.01 31.35 DL
+127.11 35.69 1 127.11 31.35 DL
+167.21 35.69 1 167.21 31.35 DL
+207.31 35.69 1 207.31 31.35 DL
+247.41 35.69 1 247.41 31.35 DL
+287.51 35.69 1 287.51 31.35 DL
+327.61 35.69 1 327.61 31.35 DL
+367.71 35.69 1 367.71 31.35 DL
+407.82 35.69 1 407.82 31.35 DL
+447.92 35.69 1 447.92 31.35 DL
+488.02 35.69 1 488.02 31.35 DL
+/Helvetica 13.3333 F
+GS
+81.01 390.98 M
+1 -1 scale
+(-1) t
+GR
+GS
+123.61 390.98 M
+1 -1 scale
+(0) t
+GR
+GS
+163.71 390.98 M
+1 -1 scale
+(1) t
+GR
+GS
+203.81 390.98 M
+1 -1 scale
+(2) t
+GR
+GS
+243.91 390.98 M
+1 -1 scale
+(3) t
+GR
+GS
+284.01 390.98 M
+1 -1 scale
+(4) t
+GR
+GS
+324.11 390.98 M
+1 -1 scale
+(5) t
+GR
+GS
+364.21 390.98 M
+1 -1 scale
+(6) t
+GR
+GS
+404.32 390.98 M
+1 -1 scale
+(7) t
+GR
+GS
+444.42 390.98 M
+1 -1 scale
+(8) t
+GR
+GS
+484.52 390.98 M
+1 -1 scale
+(9) t
+GR
+/Helvetica 14.6667 F
+GS
+275 408.32 M
+1 -1 scale
+(x [m]) t
+GR
+73 31.35 1 73 373.65 DL
+507 31.35 1 507 373.65 DL
+77.34 347.43 1 73 347.43 DL
+77.34 307.33 1 73 307.33 DL
+77.34 267.22 1 73 267.22 DL
+77.34 227.12 1 73 227.12 DL
+77.34 187.02 1 73 187.02 DL
+77.34 146.92 1 73 146.92 DL
+77.34 106.82 1 73 106.82 DL
+77.34 66.72 1 73 66.72 DL
+502.66 347.43 1 507 347.43 DL
+502.66 307.33 1 507 307.33 DL
+502.66 267.22 1 507 267.22 DL
+502.66 227.12 1 507 227.12 DL
+502.66 187.02 1 507 187.02 DL
+502.66 146.92 1 507 146.92 DL
+502.66 106.82 1 507 106.82 DL
+502.66 66.72 1 507 66.72 DL
+/Helvetica 13.3333 F
+GS
+55.67 351.93 M
+1 -1 scale
+(-5) t
+GR
+GS
+55.67 311.83 M
+1 -1 scale
+(-4) t
+GR
+GS
+55.67 271.72 M
+1 -1 scale
+(-3) t
+GR
+GS
+55.67 231.62 M
+1 -1 scale
+(-2) t
+GR
+GS
+55.67 191.52 M
+1 -1 scale
+(-1) t
+GR
+GS
+60.67 151.42 M
+1 -1 scale
+(0) t
+GR
+GS
+60.67 111.32 M
+1 -1 scale
+(1) t
+GR
+GS
+60.67 71.22 M
+1 -1 scale
+(2) t
+GR
+/Helvetica 14.6667 F
+GS
+48.67 217.5 M
+1 -1 scale
+90 R
+(y [m]) t
+GR
+2.67 0 0 [] 0 1.00 0.00 0.00 LAR
+347.56 315.75 1 347.56 305.75 DL
+352.56 310.75 1 342.56 310.75 DL
+429.55 90.15 1 429.55 80.15 DL
+434.55 85.15 1 424.55 85.15 DL
+398.63 123.41 1 398.63 113.41 DL
+403.63 118.41 1 393.63 118.41 DL
+247.3 305.88 1 247.3 295.88 DL
+252.3 300.88 1 242.3 300.88 DL
+156.88 155.34 1 156.88 145.34 DL
+161.88 150.34 1 151.88 150.34 DL
+342.15 36.35 1 342.15 26.35 DL
+347.15 31.35 1 337.15 31.35 DL
+149.61 61.27 1 149.61 51.27 DL
+154.61 56.27 1 144.61 56.27 DL
+195.77 352.61 1 195.77 342.61 DL
+200.77 347.61 1 190.77 347.61 DL
+287.75 277.86 1 287.75 267.86 DL
+292.75 272.86 1 282.75 272.86 DL
+213.36 270.95 1 213.36 260.95 DL
+218.36 265.95 1 208.36 265.95 DL
+2.67 0 0 [] 0 0.00 LAG
+241.82 376.95 1 235.22 370.35 DL
+241.82 370.35 1 235.22 376.95 DL
+433.69 83.14 1 427.09 76.54 DL
+433.69 76.54 1 427.09 83.14 DL
+390.25 99.2 1 383.65 92.6 DL
+390.25 92.6 1 383.65 99.2 DL
+169.42 260.22 1 162.82 253.62 DL
+169.42 253.62 1 162.82 260.22 DL
+159.82 154.79 1 153.22 148.19 DL
+159.82 148.19 1 153.22 154.79 DL
+345.07 36.8 1 338.47 30.2 DL
+345.07 30.2 1 338.47 36.8 DL
+153.2 60.03 1 146.6 53.43 DL
+153.2 53.43 1 146.6 60.03 DL
+199.78 349.38 1 193.18 342.78 DL
+199.78 342.78 1 193.18 349.38 DL
+289.07 276.44 1 282.47 269.84 DL
+289.07 269.84 1 282.47 276.44 DL
+215.66 270.32 1 209.06 263.72 DL
+215.66 263.72 1 209.06 270.32 DL
+1.00 GC
+496 363 312 363 312 330 3 496 330 DPLF
+/Helvetica 12 F
+0.13 GC
+GS
+359 343.14 M
+1 -1 scale
+(Tags robot 1 transformed) t
+GR
+2.67 0 0 [] 0 1.00 0.00 0.00 LAR
+336 344.14 1 336 334.14 DL
+341 339.14 1 331 339.14 DL
+0.13 GC
+GS
+359 357.86 M
+1 -1 scale
+(Tags robot 2) t
+GR
+2.67 0 0 [] 0 0.00 LAG
+339.3 357.16 1 332.7 350.56 DL
+339.3 350.56 1 332.7 357.16 DL
+0.67 0 0 [] 0 0.13 LAG
+496 363 496 330 312 330 3 312 363 DPL
+%%Trailer
+%%Pages: 1
+%%EOF
