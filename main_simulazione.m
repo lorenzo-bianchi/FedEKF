@@ -58,6 +58,9 @@ for k = 2:nPassi
         if ~isempty(sharedInfoArray)
             for robot = 1:nRobot
                 ekfs(robot).correction_shared(sharedInfoArray);
+                if pruning && k >= stepStartPruning
+                    ekfs(robot).pruning();
+                end
                 if ekfs(robot).do_reset
                     fprintf('Robot %d resetting at t=%d\n', robot, k)
                     ekfs(robot).reset();
