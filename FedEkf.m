@@ -336,10 +336,6 @@ classdef FedEkf < handle
 
                 phiTagMediato = 0.0;
 
-                if obj.k == 100
-                    1;
-                end
-
                 for indPhi = 1:nPhi
                     phi_ij = obj.xHatSLAM(2+ind0+indPhi, obj.k+1);
                     pesoTag = obj.pesi(indTag, indPhi);
@@ -382,7 +378,7 @@ classdef FedEkf < handle
                     covRhoPhi = obj.P(ind_r, ind_p);
 
                     var_x = varXi + cosPhi_ij^2 * varRho + rho_i^2 * sinPhi_ij^2 * varPhi + ...
-                        2*cosPhi_ij*covXRho - 2*rho_i*sinPhi_ij*covXPhi - 2*rho_i*cosPhi_ij*sinPhi_ij*covRhoPhi;
+                            2*cosPhi_ij*covXRho - 2*rho_i*sinPhi_ij*covXPhi - 2*rho_i*cosPhi_ij*sinPhi_ij*covRhoPhi;
 
                     var_y = varYi + sinPhi_ij^2 * varRho + rho_i^2 * cosPhi_ij^2 * varPhi + ...
                             2*sinPhi_ij*covYRho + 2*rho_i*cosPhi_ij*covYPhi + 2*rho_i*cosPhi_ij*sinPhi_ij*covRhoPhi;
@@ -405,7 +401,7 @@ classdef FedEkf < handle
                 obj.varY(indTag) = varYTagMediata;
                 obj.covXY(indTag) = covXYTagMediata;
 
-                sigma = [obj.varX(indTag) obj.covXY(indTag);
+                sigma = [ obj.varX(indTag) obj.covXY(indTag);
                          obj.covXY(indTag) obj.varY(indTag)];
                 if any(eig(sigma) < 0)
                     disp("Error with eigs")
@@ -447,10 +443,6 @@ classdef FedEkf < handle
                 return;
             end
 
-            % if obj.k == 899 && obj.id == 2
-            %     a = 1;
-            % end
-
             inliersGood = zeros(2, nTag, length(other_measures));
             empty = 1;
             for robot1 = 1:length(other_measures)-1
@@ -482,8 +474,8 @@ classdef FedEkf < handle
                 T = [R, t; zeros(1, 2), 1];
 
                 % Applica rototraslazione alle posizioni dei tag
-                temp = T*[otherRobotTags; ones(1, nTag)];
-                posTagRobot(:, :, end+1) = temp(1:2, :);
+                tags_to_use = T*[otherRobotTags; ones(1, nTag)];
+                posTagRobot(:, :, end+1) = tags_to_use(1:2, :);
 
                 % Applica rotazione alle varianze
                 for indTag = 1:nTag
@@ -526,19 +518,24 @@ classdef FedEkf < handle
             W_ = inliersGood ./ den;
             measures_weighted  = sum(W_ .* posTagRobot, 3);
 
-            temp = sum(W_(1, :, :), 3);
+            tags_to_use = sum(W_(1, :, :), 3);
+            if all(tags_to_use == 0)
+                return
+            end
 
-            indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
-            
-            change = 0;
-            for idx_pos = 1 %1:size(posTagRobot, 3)
+            for idx_pos = 1%:size(posTagRobot, 3)       % fare la media sembra funzionare meglio
+                % obj.restore_matrices();
+                indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
+                change = 0;
                 % pos = posTagRobot(:, :, idx_pos);
                 for indTag = 1:nTag
-                    indMat = indMatCum(indTag)  - change;
-                    if temp(indTag) == 0
-                        change = change + 1;
+                    nPhi = obj.nPhiVett(indTag);
+                    indMat = indMatCum(indTag) - change;
+                    if tags_to_use(indTag) == 0
                         i = indMat + 1;
                         for indPhi = 1:nPhi
+                            change = change + 1;
+
                             obj.Hx = obj.Hx([1:i-1, i+1:end], :);
                             obj.Hy = obj.Hy([1:i-1, i+1:end], :);
 
@@ -553,18 +550,17 @@ classdef FedEkf < handle
                         continue
                     end
 
-                    var_ = 1.0;                                         % varianza statica
+                    var_ = 0.05;                                         % varianza statica
                     fused_var_x = var_;
                     fused_var_y = var_;
-                    % fused_var_x = vars(1, indTag, idx_pos);           % singole misure
-                    % fused_var_y = vars(2, indTag, idx_pos);
+                    % fused_var_x = 100*vars(1, indTag, idx_pos);           % singole misure
+                    % fused_var_y = 100*vars(2, indTag, idx_pos);
                     % fused_var_x = 1 / sum(1 ./ vars(1, indTag, :));   % media misure
                     % fused_var_y = 1 / sum(1 ./ vars(2, indTag, :));
     
                     sigmaX = sqrt(fused_var_x);
                     sigmaY = sqrt(fused_var_y);
     
-                    nPhi = obj.nPhiVett(indTag);
                     ind0 = obj.xHatCumIndices(indTag+1);
                     x_i   = obj.xHatSLAMmeno(0+ind0);
                     y_i   = obj.xHatSLAMmeno(1+ind0);
@@ -626,17 +622,22 @@ classdef FedEkf < handle
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
 
             if change > 0
-                % restore previous dimensions
-                nPhiTagNew = sum(obj.nPhiVett);
-                stateLenNew = sum(obj.xHatIndices)-1;
-
-                obj.Hx = zeros(nPhiTagNew, stateLenNew);
-                obj.Hy = zeros(nPhiTagNew, stateLenNew);
-                obj.innovazioneX = zeros(nPhiTagNew, 1);
-                obj.innovazioneY = zeros(nPhiTagNew, 1);
-                obj.RsX = zeros(nPhiTagNew, nPhiTagNew);
-                obj.RsY = zeros(nPhiTagNew, nPhiTagNew);
+                obj.restore_matrices();
             end
+        end
+
+        %
+        function [obj] = restore_matrices(obj)
+            % restore previous dimensions
+            nPhiTagNew = sum(obj.nPhiVett);
+            stateLenNew = sum(obj.xHatIndices)-1;
+
+            obj.Hx = zeros(nPhiTagNew, stateLenNew);
+            obj.Hy = zeros(nPhiTagNew, stateLenNew);
+            obj.innovazioneX = zeros(nPhiTagNew, 1);
+            obj.innovazioneY = zeros(nPhiTagNew, 1);
+            obj.RsX = zeros(nPhiTagNew, nPhiTagNew);
+            obj.RsY = zeros(nPhiTagNew, nPhiTagNew);
         end
 
         %

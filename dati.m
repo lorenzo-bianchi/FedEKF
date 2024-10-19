@@ -1,17 +1,18 @@
-seed = 23;
+seed = 35;  %34
 rng(seed)
 
 DISEGNA_ANIMAZIONE = 0;
 DISEGNA_ULTIMO = 0;
-DISEGNA_PLOT = 0;
+DISEGNA_PLOT = 1;
 DISEGNA_ICP = 0;
-displayErrori = 1;
+DISEGNA_VAR = 0;
+displayErrori = 0;
 
 data = struct();
 
 nRobot = 6;
 
-nPassi = 1200;
+nPassi = 1500;
 nPhi = 16; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
 pruning = 1;
 minZerosStartPruning = ceil(nPhi*0.6);
@@ -26,9 +27,9 @@ sigmaDistanzaModello = sigmaDistanza; % Per prevedere anche un'incertezza sulla 
 sigmaMisuraMedia = 1.0;
 
 % ransac
-numIterations = 50;
-distanceThreshold = 0.2;
-percentMinInliers = 0.5;
+numIterations = 100;
+distanceThreshold = 0.1;
+percentMinInliers = 0.7;
 
 Nstep = 1; % passi tra una misura e la successiva
 possibiliPhi = linspace(-pi+2*pi/nPhi, pi, nPhi);

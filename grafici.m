@@ -33,6 +33,10 @@ if DISEGNA_PLOT
     for robot = 1:nRobot
         % Errori assoluti
         grafico_singolo;
+
+        if 1
+            print(['plot', num2str(robot), '.eps'], '-depsc2');
+        end
         %%
     end
 end
@@ -55,5 +59,30 @@ if DISEGNA_ICP
         ylabel('y [m]');
         axis equal;
         grid on;
+    end
+end
+
+if DISEGNA_VAR
+    %%
+    robot = 3;
+
+    t0 = 1;
+    tf = nPassi;
+    t = t0:tf;
+    
+    tags = 1:1; %nTag;
+    for tag = tags
+        var_x = squeeze(ekfs(robot).varsStoria(1, tag, t))';
+        var_y = squeeze(ekfs(robot).varsStoria(2, tag, t))';
+        
+        figure
+        hold on
+        grid on
+        legend('Interpreter', 'latex', 'FontSize', 12)
+        plot(t, sqrt(var_x), 'b', 'LineWidth', 1.5, 'DisplayName', '$\sigma_x$')
+        plot(t, sqrt(var_y), 'r', 'LineWidth', 1.5, 'DisplayName', '$\sigma_y$')
+        % plot(t, sqrt(var_x.^2 + var_y.^2), 'k', 'LineWidth', 1.5, 'DisplayName', 'var_tot')
+        xlabel('simulation step');
+        ylabel('[m]');
     end
 end

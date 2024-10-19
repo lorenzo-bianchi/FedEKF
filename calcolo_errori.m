@@ -5,6 +5,7 @@ distanzeRobotStimate = zeros(nRobot, nTag);
 distanzeInterTagVere = zeros(nRobot, nTag*(nTag-1)/2);
 distanzeInterTagStimate = zeros(nRobot, nTag*(nTag-1)/2);
 erroriAssolutiTag = zeros(nRobot, nTag);
+erroriMediPostICP = zeros(1, nRobot);
 
 for robot = 1:nRobot
     xVett = percorsi(:, 1, robot);
@@ -35,6 +36,17 @@ for robot = 1:nRobot
     posRobLoc = [xRobotEnd; yRobotEnd; 1];
     posRobGlob = TsGL{robot}(:, :, end)*posRobLoc;
     erroreAssolutoRobot(robot) = sqrt((posRobGlob(1)-xVett(k))^2+(posRobGlob(2)-yVett(k))^2);
+
+    robot_tags = [ekfs(robot).xHatTagStoria(:, end)'; ekfs(robot).yHatTagStoria(:, end)']';
+    [RR, tt, inl] = ransacRototranslation(robot_tags, cTag, data.numIterations, 0.25, 5);
+    if isempty(inl)
+        erroriMediPostICP(robot) = nan;
+    else
+        TT = [RR, tt; zeros(1, 2), 1];
+        temp = TT*[robot_tags'; ones(1, nTag)];
+        temp = temp(1:2, :);
+        erroriMediPostICP(robot) = mean(vecnorm(cTag' - temp));
+    end
     
     if displayErrori
         fprintf("Robot %d:\n", robot);
@@ -71,5 +83,8 @@ for robot = 1:nRobot
         fprintf("\tErrore assoluto robot: ")
         fprintf("%.3f ", erroreAssolutoRobot(robot));
         fprintf("\n\n");
+        fprintf("\tMedia distanze tag post ICP: ")
+        fprintf("%.3f ", erroriMediPostICP);
+        fprintf("\n");
     end
 end

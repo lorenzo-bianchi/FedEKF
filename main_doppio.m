@@ -14,6 +14,7 @@ distanzeRobotStimateTot = {};
 distanzeInterTagVereTot = {};
 distanzeInterTagStimateTot = {};
 erroriAssolutiTagTot = {};
+erroriMediPostICPTot = {};
     
 for i = 0:1
     sharing = i;
@@ -43,6 +44,7 @@ for i = 0:1
     distanzeInterTagVereTot{i+1} = distanzeInterTagVere;
     distanzeInterTagStimateTot{i+1} = distanzeInterTagStimate;
     erroriAssolutiTagTot{i+1} = erroriAssolutiTag;
+    erroriMediPostICPTot{i+1} = erroriMediPostICP;
 
     fprintf('\n')
 end
@@ -67,6 +69,18 @@ for robot = 1:nRobot
     err1 = erroreAssolutoRobotTot{1}(robot);
     err2 = erroreAssolutoRobotTot{2}(robot);
     fprintf('\tErrore assoluto robot: \t\t\t%.3f \t\t %.3f \t\t %.3f \n', err1, err2, err1-err2)
+
+    mean_rot1 = erroriMediPostICPTot{1}(robot);
+    mean_rot2 = erroriMediPostICPTot{2}(robot);
+    if isnan(mean_rot1) && ~isnan(mean_rot2)
+        val = Inf;
+    elseif isnan(mean_rot2) && ~isnan(mean_rot1)
+        val = -Inf;
+    else
+        val = mean_rot1-mean_rot2;
+    end
+        
+    fprintf('\tErrore medio tag post ICP: \t\t%.3f \t\t %.3f \t\t %.3f \n', mean_rot1, mean_rot2, val)
     fprintf('\n')
 end
 

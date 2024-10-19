@@ -1,5 +1,5 @@
 if length(dbstack) == 1
-    robot = 3;
+    robot = 6;
 end
 
 figure
@@ -26,9 +26,9 @@ for tag = 1:nTag
     else
         posGlob = TsGL{robot}(:, :, 1)*posLoc;
     end
-    plot(time, posGlob(1, :), 'LineWidth', 1.5, 'Color', colors{tag}, 'DisplayName', names{tag})
+    plot(time, posGlob(1, :), 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', names{tag})
     hold on
-    plot(time, cTag(tag, 1)*ones(1, length(time)), '--', 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', '')
+    plot(time, cTag(tag, 1)*ones(1, length(time)), '--', 'LineWidth', 0.8, 'Color', colors{tag}, 'DisplayName', '')
 end
 if pruning
     xline(stepStartPruning, '--k', 'LineWidth', 1, 'DisplayName', 'Pruning');
@@ -47,7 +47,7 @@ if sharing
     end
 end
 if ~isempty(tResets{robot})
-    xline(tResets{robot}, '--r', 'LineWidth', 2, 'DisplayName', 'Reset');
+    xline(tResets{robot}, '--r', 'LineWidth', 1.5, 'DisplayName', 'Reset');
 end
 
 grid on
