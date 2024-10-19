@@ -74,9 +74,9 @@ for tag = 1:nTag
     else
         posGlob = TsGL{robot}(:, :, 1)*posLoc;
     end
-    plot(time, posGlob(2, :), 'LineWidth', 1.5, 'Color', colors{tag}, 'DisplayName', names{tag})
+    plot(time, posGlob(2, :), 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', names{tag})
     hold on
-    plot(time, cTag(tag, 2)*ones(1, length(time)), '--', 'LineWidth', 1, 'Color', colors{tag}, 'DisplayName', '')
+    plot(time, cTag(tag, 2)*ones(1, length(time)), '--', 'LineWidth', 0.8, 'Color', colors{tag}, 'DisplayName', '')
 end
 if pruning
     xline(stepStartPruning, '--k', 'LineWidth', 1, 'DisplayName', 'Pruning');
