@@ -1,4 +1,5 @@
 clc; clear; close all;
+load('percorsi.mat', 'percorsi');
 
 %% PARAMETRI
 data = struct();
@@ -59,10 +60,12 @@ data.percentMinInliers = percentMinInliers;
 data.resetThr = resetThr;
 data.reset = reset;
 
-x0 = [2.2, 1.1, 1.2];
+x0 = [0.0, 0.0, 0.0];
 distanze = zeros(1, nTag);
 
 %% INIZIALIZZAZIONE
+rng(10);
+
 ekf = FedEkf(data, 0, x0, distanze);
 
 % ROS
@@ -75,22 +78,89 @@ odom_msg.velocity = [1.2, 2.5];
 
 uwb_pub = ros2publisher(node, "/robot1/uwb_tag", "ro_slam_interfaces/UwbArray");
 uwb_msg = ros2message(uwb_pub);
-uwb_msg.anchor_num = nTag;
+uwb_msg.anchor_num = uint8(nTag);
 
-%% PREDIZIONE
-r = 0.033;
-omegaR = 1.0;
-omegaL = -1.5;
-ekf.prediction(omegaR * r, omegaL * r);
+k = 0;
+robot = 1;
+rWheel = 0.033;
+L = 10;
+cTag = 0.9*L*rand(nTag, 2) + 0.05*L;
 
-odom_msg.velocity = [omegaR, omegaL];
-send(odom_pub, odom_msg);
-
-%% CORREZIONE
-misureRange = [5.0370, 7.3865, 7.3272];%, 6.8257, 2.5218, 8.6032, 4.4099, 7.3127, 3.0873, 3.8493];
-ekf.correction(misureRange);
-
-for i = 1:length(misureRange)
-   uwb_msg.uwbs(i).dist = misureRange(i); 
+if false
+    %% PREDIZIONE
+    k = k + 1;
+    
+    uRe = percorsi(k, 4, robot);
+    uLe = percorsi(k, 5, robot);
+    
+    ekf.prediction(uRe, uLe);
+    
+    odom_msg.velocity = [uRe / rWheel, uLe / rWheel];
+    send(odom_pub, odom_msg);
+    
+    %% CORREZIONE
+    x = percorsi(k, 1, robot);
+    y = percorsi(k, 2, robot);
+    
+    misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
+    ekf.correction(misureRange);
+    
+    for i = 1:nTag
+        uwb_msg.uwbs(i).header = uwb_msg.header;
+        uwb_msg.uwbs(i).id = int8(i-1);
+        uwb_msg.uwbs(i).id_str = num2str(i-1);
+        uwb_msg.uwbs(i).dist = single(misureRange(i));
+        uwb_msg.uwbs(i).x = single(0);
+        uwb_msg.uwbs(i).y = single(0);
+        uwb_msg.uwbs(i).z = single(0);
+    end
+    send(uwb_pub, uwb_msg);
 end
-send(uwb_pub, uwb_msg);
+
+
+
+
+
+
+
+%% PREDIZIONE+CORREZIONE
+% odom_msg.velocity = [0.0, 0.0];
+% send(odom_pub, odom_msg);
+pause(1)
+
+for iter = 1:50
+    % PREDIZIONE
+    k = k + 1;
+    
+    uRe = percorsi(k, 4, robot);
+    uLe = percorsi(k, 5, robot);
+    
+    ekf.prediction(uRe, uLe);
+    
+    odom_msg.velocity = [uRe / rWheel, uLe / rWheel];
+    send(odom_pub, odom_msg);
+
+    pause()
+
+    
+    % CORREZIONE
+    x = percorsi(k, 1, robot);
+    y = percorsi(k, 2, robot);
+
+    misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
+    ekf.correction(misureRange);
+    disp(ekf.xHatSLAM(:, k+1)')
+
+    for i = 1:nTag
+        uwb_msg.uwbs(i).header = uwb_msg.header;
+        uwb_msg.uwbs(i).id = int8(i-1);
+        uwb_msg.uwbs(i).id_str = num2str(i-1);
+        uwb_msg.uwbs(i).dist = single(misureRange(i));
+        uwb_msg.uwbs(i).x = single(0);
+        uwb_msg.uwbs(i).y = single(0);
+        uwb_msg.uwbs(i).z = single(0);
+    end
+    send(uwb_pub, uwb_msg);
+
+    pause()
+end
