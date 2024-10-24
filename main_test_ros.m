@@ -1,5 +1,6 @@
 clc; clear; close all;
 load('percorsi.mat', 'percorsi');
+seed = 10;
 
 %% PARAMETRI
 data = struct();
@@ -61,10 +62,20 @@ data.resetThr = resetThr;
 data.reset = reset;
 
 x0 = [0.0, 0.0, 0.0];
-distanze = zeros(1, nTag);
+
+robot = 1;
+rWheel = 0.033;
+L = 10;
+
+rng(seed);
+cTag = 0.9*L*rand(nTag, 2) + 0.05*L;
 
 %% INIZIALIZZAZIONE
-rng(10);
+rng(seed);
+
+x0Glob = percorsi(1, 1, robot);
+y0Glob = percorsi(1, 2, robot);
+distanze = sqrt((x0Glob-cTag(:,1)).^2+(y0Glob-cTag(:,2)).^2) + sigmaDistanza*randn;
 
 ekf = FedEkf(data, 0, x0, distanze);
 
@@ -81,10 +92,6 @@ uwb_msg = ros2message(uwb_pub);
 uwb_msg.anchor_num = uint8(nTag);
 
 k = 0;
-robot = 1;
-rWheel = 0.033;
-L = 10;
-cTag = 0.9*L*rand(nTag, 2) + 0.05*L;
 
 if false
     %% PREDIZIONE
@@ -126,6 +133,7 @@ end
 %% PREDIZIONE+CORREZIONE
 % odom_msg.velocity = [0.0, 0.0];
 % send(odom_pub, odom_msg);
+rng(seed);
 pause(1)
 
 for iter = 1:50
@@ -135,10 +143,10 @@ for iter = 1:50
     uRe = percorsi(k, 4, robot);
     uLe = percorsi(k, 5, robot);
     
-    ekf.prediction(uRe, uLe);
-    
     odom_msg.velocity = [uRe / rWheel, uLe / rWheel];
     send(odom_pub, odom_msg);
+
+    ekf.prediction(uRe, uLe);
 
     pause()
 
@@ -146,10 +154,8 @@ for iter = 1:50
     % CORREZIONE
     x = percorsi(k, 1, robot);
     y = percorsi(k, 2, robot);
-
     misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
-    ekf.correction(misureRange);
-    disp(ekf.xHatSLAM(:, k+1)')
+    disp(misureRange')
 
     for i = 1:nTag
         uwb_msg.uwbs(i).header = uwb_msg.header;
@@ -162,5 +168,34 @@ for iter = 1:50
     end
     send(uwb_pub, uwb_msg);
 
+    ekf.correction(misureRange);
+    disp(ekf.xHatSLAM(:, k+1)')
+    disp(ekf.pesi)
+
     pause()
 end
+
+return
+
+%%
+% ROS
+clc; clear; close all;
+node = ros2node("/ro_slam_matlab");
+
+misureRange = [1.234, 2.345, 3.456];
+nTag = length(misureRange)
+
+uwb_pub = ros2publisher(node, "/robot1/uwb_tag", "ro_slam_interfaces/UwbArray");
+uwb_msg = ros2message(uwb_pub);
+uwb_msg.anchor_num = uint8(nTag);
+
+for i = 1:nTag
+    uwb_msg.uwbs(i).header = uwb_msg.header;
+    uwb_msg.uwbs(i).id = int8(i-1);
+    uwb_msg.uwbs(i).id_str = num2str(i-1);
+    uwb_msg.uwbs(i).dist = single(misureRange(i));
+    uwb_msg.uwbs(i).x = single(0);
+    uwb_msg.uwbs(i).y = single(0);
+    uwb_msg.uwbs(i).z = single(0);
+end
+send(uwb_pub, uwb_msg);
