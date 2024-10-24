@@ -7,11 +7,11 @@ data = struct();
 
 nPassi = 1500;
 
-nTag = 3;
-nPhi = 4; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
+nTag = 10;
+nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
 pruning = 1;
-minZerosStartPruning = 1; %ceil(nPhi*0.6);
-stepStartPruning = 25;         % mettere valore piccolo per evitare errori iniziali
+minZerosStartPruning = ceil(nPhi*0.6);
+stepStartPruning = 70;         % mettere valore piccolo per evitare errori iniziali
 sharing = 1;
 stepStartSharing = 400;
 reset = 1;
@@ -134,10 +134,17 @@ end
 rng(seed);
 pause(1)
 
-for iter = 1:50
+for iter = 1:500
+    stops = [90, 150, 500, 300];
+    if ismember(iter, stops)
+        pause()
+    end
+
     % PREDIZIONE
     k = k + 1;
     
+    disp(k)
+
     uRe = percorsi(k, 4, robot);
     uLe = percorsi(k, 5, robot);
     
@@ -146,7 +153,7 @@ for iter = 1:50
 
     ekf.prediction(uRe, uLe);
 
-    pause()
+    pause(0.3)
 
     
     % CORREZIONE
@@ -175,7 +182,7 @@ for iter = 1:50
 
     disp(ekf.pesi)
 
-    pause()
+    pause(0.3)
 end
 
 return
