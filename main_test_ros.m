@@ -5,15 +5,13 @@ seed = 10;
 %% PARAMETRI
 data = struct();
 
-nRobot = 6;
+nPassi = 1500;
 
 nTag = 3;
-
-nPassi = 1500;
 nPhi = 4; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
 pruning = 1;
-minZerosStartPruning = ceil(nPhi*0.6);
-stepStartPruning = 100;         % mettere valore piccolo per evitare errori iniziali
+minZerosStartPruning = 1; %ceil(nPhi*0.6);
+stepStartPruning = 25;         % mettere valore piccolo per evitare errori iniziali
 sharing = 1;
 stepStartSharing = 400;
 reset = 1;
@@ -155,7 +153,6 @@ for iter = 1:50
     x = percorsi(k, 1, robot);
     y = percorsi(k, 2, robot);
     misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
-    disp(misureRange')
 
     for i = 1:nTag
         uwb_msg.uwbs(i).header = uwb_msg.header;
@@ -170,6 +167,12 @@ for iter = 1:50
 
     ekf.correction(misureRange);
     disp(ekf.xHatSLAM(:, k+1)')
+    disp(ekf.pesi)
+
+    if pruning && k >= stepStartPruning
+        ekf(robot).pruning();
+    end
+
     disp(ekf.pesi)
 
     pause()
