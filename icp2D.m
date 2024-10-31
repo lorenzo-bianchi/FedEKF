@@ -9,13 +9,13 @@ function [R, t] = icp2D(sourcePoints, targetPoints)
 
     % Compute the covariance matrix
     H = centeredSourcePoints' * centeredTargetPoints;
-    
+
     % Compute the SVD of the covariance matrix
     [U, ~, V] = svd(H);
-    
+
     % Compute the rotation matrix
     R = V * U';
-    
+
     % Ensure a proper rotation (det(R) should be 1)
     if det(R) < 0
         V(:, end) = -V(:, end);

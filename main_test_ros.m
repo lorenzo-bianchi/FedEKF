@@ -135,7 +135,7 @@ rng(seed);
 pause(1)
 
 for iter = 1:500
-    stops = [90, 150, 500, 300];
+    stops = [300];
     if ismember(iter, stops)
         pause()
     end
@@ -155,8 +155,11 @@ for iter = 1:500
 
     pause(0.3)
 
-    
     % CORREZIONE
+    if mod(k, 5) == 0
+        continue
+    end
+
     x = percorsi(k, 1, robot);
     y = percorsi(k, 2, robot);
     misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
@@ -173,14 +176,16 @@ for iter = 1:500
     send(uwb_pub, uwb_msg);
 
     ekf.correction(misureRange);
-    disp(ekf.xHatSLAM(:, k+1)')
+    % disp(ekf.xHatSLAM(:, k+1)')
     disp(ekf.pesi)
 
     if pruning && k >= stepStartPruning
         ekf(robot).pruning();
     end
 
-    disp(ekf.pesi)
+    ekf.save_history();
+
+    % disp(ekf.pesi)
 
     pause(0.3)
 end

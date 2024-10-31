@@ -11,7 +11,7 @@ wheel_radius = 0.033;
 wheels_separation = 0.16;
 
 %% Read bag and topics names
-bag_name = 'bag_prof3';
+bag_name = 'bag_prof_3_robot';
 path_prefix = '/home/lorenzo/Github/University/playground/logs/';
 full_path = strcat(path_prefix, bag_name, '/', bag_name, '_0.db3');
 bag = ros2bagreader(full_path);
@@ -208,11 +208,11 @@ roslam_data.wheel_radius = wheel_radius;
 roslam_data.wheels_separation = wheels_separation;
 
 roslam_data.duration = t_end-t_start;
-roslam_data.n_robots = n_robots;
-roslam_data.n_anchors_fixed = n_anchors;
-roslam_data.n_anchors_total = n_anchors_tot;
+roslam_data.num_robots = n_robots;
+roslam_data.num_anchors_fixed = n_anchors;
+roslam_data.num_anchors_total = n_anchors_tot;
 roslam_data.inter_robots_distances = inter_robots_distances;
-roslam_data.pos_anchors = pos_anchors;
+roslam_data.anchors_positions = pos_anchors;
 
 roslam_data.ground_truth = gt_data;
 roslam_data.robot_odometry = odom_data;
