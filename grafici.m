@@ -70,7 +70,7 @@ if DISEGNA_VAR
     tf = nPassi;
     t = t0:tf;
     
-    tags = 1:1; %nTag;
+    tags = 1:nTag;
     for tag = tags
         var_x = squeeze(ekfs(robot).varsStoria(1, tag, t))';
         var_y = squeeze(ekfs(robot).varsStoria(2, tag, t))';
@@ -79,8 +79,8 @@ if DISEGNA_VAR
         hold on
         grid on
         legend('Interpreter', 'latex', 'FontSize', 12)
-        plot(t, sqrt(var_x), 'b', 'LineWidth', 1.5, 'DisplayName', '$\sigma_x$')
-        plot(t, sqrt(var_y), 'r', 'LineWidth', 1.5, 'DisplayName', '$\sigma_y$')
+        plot(t, sqrt(var_x), 'b', 'LineWidth', 1, 'DisplayName', '$\sigma_x$')
+        plot(t, sqrt(var_y), 'r', 'LineWidth', 1, 'DisplayName', '$\sigma_y$')
         % plot(t, sqrt(var_x.^2 + var_y.^2), 'k', 'LineWidth', 1.5, 'DisplayName', 'var_tot')
         xlabel('simulation step');
         ylabel('[m]');
