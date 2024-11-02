@@ -11,9 +11,7 @@ classdef FedEkf < handle
         xHatTagSigmaStoria
         yHatTagSigmaStoria
         P
-        Pmeno
         Ptag
-        xHatSLAMmeno
         F
         W
         H
@@ -41,6 +39,7 @@ classdef FedEkf < handle
         nReset
         lastMeasures
         varsStoria
+        firstCorrection
     end
     
     methods
@@ -65,7 +64,6 @@ classdef FedEkf < handle
             obj.P = zeros(3+(3+nPhiMax)*nTag, 3+(3+nPhiMax)*nTag);
             obj.Ptag = diag([0, 0, obj.sigmaD^2, obj.sigmaPhi^2*ones(1, nPhiMax)]);
 
-            obj.xHatSLAMmeno = zeros(3+(3+nPhiMax)*nTag, 1);
             obj.F = eye(3+(3+nPhiMax)*nTag);
             obj.W = zeros(3+(3+nPhiMax)*nTag, 2);
             obj.H = zeros(nTag*nPhiMax, 3+(3+nPhiMax)*nTag);
@@ -112,6 +110,8 @@ classdef FedEkf < handle
 
             obj.nReset = 0;
             obj.do_reset = 0;
+
+            obj.firstCorrection = 1;
         end
         
         %
@@ -126,10 +126,10 @@ classdef FedEkf < handle
         
             % Gli unici elementi che cambiano sono le coordinate
             % del robot in posizione 1, 2 e 3 del vettore xHatSLAM
-            obj.xHatSLAMmeno = obj.xHatSLAM(:, obj.k);
-            obj.xHatSLAMmeno(1) = obj.xHatSLAMmeno(1) + uk*cosk;
-            obj.xHatSLAMmeno(2) = obj.xHatSLAMmeno(2) + uk*sink;
-            obj.xHatSLAMmeno(3) = obj.xHatSLAMmeno(3) + omegak;
+            obj.xHatSLAM(:, obj.k+1) = obj.xHatSLAM(:, obj.k);
+            obj.xHatSLAM(1, obj.k+1) = obj.xHatSLAM(1, obj.k) + uk*cosk;
+            obj.xHatSLAM(2, obj.k+1) = obj.xHatSLAM(2, obj.k) + uk*sink;
+            obj.xHatSLAM(3, obj.k+1) = obj.xHatSLAM(3, obj.k) + omegak;
         
             % Aggiornamento degli elementi variabili della jacobiana F = df/dx
             obj.F(1,3) = -uk*sink;
@@ -147,17 +147,24 @@ classdef FedEkf < handle
             Q = diag([obj.data.KR*abs(uRe); obj.data.KL*abs(uLe)]);
         
             % Calcolo matrice P^-
-            obj.Pmeno = obj.F*obj.P*obj.F' + obj.W*Q*obj.W';
+            obj.P = obj.F*obj.P*obj.F' + obj.W*Q*obj.W';
         end
         
         % 
         function [obj] = correction(obj, misureRange)
+            if obj.firstCorrection
+                nPhiMax = obj.data.nPhi;
+                obj.firstCorrection = 0;
+                obj.xHatSLAM(4:nPhiMax+3:end, obj.k+1) = obj.xHatSLAM(1, obj.k+1);
+                obj.xHatSLAM(5:nPhiMax+3:end, obj.k+1) = obj.xHatSLAM(2, obj.k+1);
+                obj.xHatSLAM(6:nPhiMax+3:end, obj.k+1) = misureRange;
+            end
             obj.lastMeasures = misureRange;
             nTag = obj.data.nTag;
 
             % Stima a priori posizione robot
-            x_r = obj.xHatSLAMmeno(1);
-            y_r = obj.xHatSLAMmeno(2);
+            x_r = obj.xHatSLAM(1, obj.k+1);
+            y_r = obj.xHatSLAM(2, obj.k+1);
 
             indMatCum = cumsum([0 obj.nPhiVett(1:end-1)]);
     
@@ -169,14 +176,14 @@ classdef FedEkf < handle
 
                 nPhi = obj.nPhiVett(indTag);
                 ind0 = obj.xHatCumIndices(indTag+1);
-                x_i   = obj.xHatSLAMmeno(0+ind0);
-                y_i   = obj.xHatSLAMmeno(1+ind0);
-                rho_i = obj.xHatSLAMmeno(2+ind0);
+                x_i   = obj.xHatSLAM(0+ind0, obj.k+1);
+                y_i   = obj.xHatSLAM(1+ind0, obj.k+1);
+                rho_i = obj.xHatSLAM(2+ind0, obj.k+1);
 
                 probMisura_ij = zeros(nPhi, 1);
 
                 for indPhi = 1:nPhi
-                    phi_ij = obj.xHatSLAMmeno(2+ind0+indPhi);
+                    phi_ij = obj.xHatSLAM(2+ind0+indPhi, obj.k+1);
                     cosPhi_ij = cos(phi_ij);
                     sinPhi_ij = sin(phi_ij);
                     xTag_ij = x_i + rho_i*cosPhi_ij;
@@ -206,9 +213,9 @@ classdef FedEkf < handle
             end
     
             % Aggiornamento stima (a posteriori)
-            KalmanGain = obj.Pmeno*obj.H'*pinv(obj.H*obj.Pmeno*obj.H'+obj.Rs);
-            obj.xHatSLAM(:, obj.k+1) = obj.xHatSLAMmeno + KalmanGain*obj.innovazione;
-            obj.P = (eye(sum(obj.xHatIndices)-1) - KalmanGain*obj.H)*obj.Pmeno;
+            KalmanGain = obj.P*obj.H'*pinv(obj.H*obj.P*obj.H'+obj.Rs);
+            obj.xHatSLAM(:, obj.k+1) = obj.xHatSLAM(:, obj.k+1) + KalmanGain*obj.innovazione;
+            obj.P = (eye(sum(obj.xHatIndices)-1) - KalmanGain*obj.H)*obj.P;
     
             % Aggiornamento pesi
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
@@ -261,7 +268,6 @@ classdef FedEkf < handle
                         ind0 = obj.xHatCumIndices(indTag+1);
                         i = ind0 + 2 + indPhi;
                         obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                        obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
                         obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
                     else
                         indPhi = indPhi + 1;
@@ -270,8 +276,8 @@ classdef FedEkf < handle
 
                 ind0 = obj.xHatCumIndices(indTag+1);
                 if nPhi == 2
-                    phi1 = obj.xHatSLAMmeno(2+ind0+1);
-                    phi2 = obj.xHatSLAMmeno(2+ind0+2);
+                    phi1 = obj.xHatSLAM(2+ind0+1, obj.k+1);
+                    phi2 = obj.xHatSLAM(2+ind0+2, obj.k+1);
 
                     peso1 = obj.pesi(indTag, 1);
                     peso2 = obj.pesi(indTag, 2);
@@ -298,7 +304,6 @@ classdef FedEkf < handle
                         ind0 = obj.xHatCumIndices(indTag+1);
                         i = ind0 + 2 + indPhi;
                         obj.P = obj.P([1:i-1, i+1:end], [1:i-1, i+1:end]);
-                        obj.Pmeno = obj.Pmeno([1:i-1, i+1:end], [1:i-1, i+1:end]);
                         obj.xHatSLAM = obj.xHatSLAM([1:i-1, i+1:end], :);
                     end
                 end
@@ -309,7 +314,6 @@ classdef FedEkf < handle
 
                 obj.innovazione = zeros(nPhiTagNew, 1);
     
-                obj.xHatSLAMmeno = zeros(stateLenNew, 1);
                 obj.F = eye(stateLenNew);
                 obj.W = zeros(stateLenNew, 2);
                 obj.H = zeros(nPhiTagNew, stateLenNew);
@@ -424,9 +428,6 @@ classdef FedEkf < handle
             nTag = obj.data.nTag;
 
             thisRobotTags = [obj.xHatTagStoria(:, obj.k+1) obj.yHatTagStoria(:, obj.k+1)];
-
-            obj.xHatSLAMmeno = obj.xHatSLAM(:, obj.k+1);
-            Pminus = obj.P;
 
             posTagRobot = zeros(2, nTag, 0);
             vars = zeros(2, nTag, 0);
@@ -562,9 +563,9 @@ classdef FedEkf < handle
                     sigmaY = sqrt(fused_var_y);
     
                     ind0 = obj.xHatCumIndices(indTag+1);
-                    x_i   = obj.xHatSLAMmeno(0+ind0);
-                    y_i   = obj.xHatSLAMmeno(1+ind0);
-                    rho_i = obj.xHatSLAMmeno(2+ind0);
+                    x_i   = obj.xHatSLAM(0+ind0, obj.k+1);
+                    y_i   = obj.xHatSLAM(1+ind0, obj.k+1);
+                    rho_i = obj.xHatSLAM(2+ind0, obj.k+1);
     
                     % misuraX_ij = pos(1, indTag);
                     % misuraY_ij = pos(2, indTag);
@@ -575,7 +576,7 @@ classdef FedEkf < handle
                     probMisuraY_ij = zeros(nPhi, 1);
     
                     for indPhi = 1:nPhi
-                        phi_ij = obj.xHatSLAMmeno(2+ind0+indPhi);
+                        phi_ij = obj.xHatSLAM(2+ind0+indPhi, obj.k+1);
                         cosPhi_ij = cos(phi_ij);
                         sinPhi_ij = sin(phi_ij);
                         xTag_ij = x_i + rho_i*cosPhi_ij;
@@ -614,9 +615,9 @@ classdef FedEkf < handle
             Htot = [obj.Hx; obj.Hy];
             RsTot = blkdiag(obj.RsX, obj.RsY);
             innovazioneTot = [obj.innovazioneX; obj.innovazioneY];
-            KalmanGain = Pminus*Htot'*pinv(Htot*Pminus*Htot'+RsTot);
-            obj.xHatSLAM(:, obj.k+1) = obj.xHatSLAMmeno + KalmanGain*innovazioneTot;
-            obj.P = (eye(sum(obj.xHatIndices)-1) - KalmanGain*Htot)*Pminus;
+            KalmanGain = obj.P*Htot'*pinv(Htot*obj.P*Htot'+RsTot);
+            obj.xHatSLAM(:, obj.k+1) = obj.xHatSLAM(:, obj.k+1) + KalmanGain*innovazioneTot;
+            obj.P = (eye(sum(obj.xHatIndices)-1) - KalmanGain*Htot)*obj.P;
     
             % Aggiornamento pesi
             obj.pesi = obj.pesi ./ sum(obj.pesi, 2);
@@ -655,7 +656,6 @@ classdef FedEkf < handle
             obj.P = zeros(3+(3+nPhiMax)*nTag, 3+(3+nPhiMax)*nTag);
             obj.Ptag = diag([0, 0, obj.sigmaD^2, obj.sigmaPhi^2*ones(1, nPhiMax)]);
 
-            obj.xHatSLAMmeno = zeros(3+(3+nPhiMax)*nTag, 1);
             obj.F = eye(3+(3+nPhiMax)*nTag);
             obj.W = zeros(3+(3+nPhiMax)*nTag, 2);
             obj.H = zeros(nTag*nPhiMax, 3+(3+nPhiMax)*nTag);
