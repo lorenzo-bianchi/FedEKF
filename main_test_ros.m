@@ -1,6 +1,6 @@
 clc; clear; close all;
 load('percorsi.mat', 'percorsi');
-seed = 10;
+seed = 13;
 
 %% PARAMETRI
 data = struct();
@@ -61,7 +61,6 @@ data.reset = reset;
 
 x0 = [0.0, 0.0, 0.0];
 
-robot = 1;
 rWheel = 0.033;
 L = 10;
 
@@ -71,146 +70,147 @@ cTag = 0.9*L*rand(nTag, 2) + 0.05*L;
 %% INIZIALIZZAZIONE
 rng(seed);
 
-x0Glob = percorsi(1, 1, robot);
-y0Glob = percorsi(1, 2, robot);
-distanze = sqrt((x0Glob-cTag(:,1)).^2+(y0Glob-cTag(:,2)).^2) + sigmaDistanza*randn;
+curr_robot = 1;
+nRobot = 6;
 
-ekf = FedEkf(data, 0, x0, distanze);
+startSharing = -1 * ones(1, nRobot);
+
+ekfs = FedEkf.empty(nRobot, 0);
+for robot = 1:nRobot
+    x0Glob = percorsi(1, 1, robot);
+    y0Glob = percorsi(1, 2, robot);
+
+    distanze = sqrt((x0Glob-cTag(:,1)).^2+(y0Glob-cTag(:,2)).^2) + sigmaDistanza*randn;
+
+    ekfs(robot) = FedEkf(data, robot, x0, distanze);
+end
 
 % ROS
-node = ros2node("/ro_slam_matlab");
+node = ros2node('/ro_slam_matlab');
+ns = strcat('/robot', num2str(curr_robot));
 
-odom_pub = ros2publisher(node, "/robot1/joint_states", "sensor_msgs/JointState");
+odom_pub = ros2publisher(node, strcat(ns, '/joint_states'), 'sensor_msgs/JointState');
 odom_msg = ros2message(odom_pub);
 odom_msg.name = {'right', 'left'};
 odom_msg.velocity = [1.2, 2.5];
 
-uwb_pub = ros2publisher(node, "/robot1/uwb_tag", "ro_slam_interfaces/UwbArray");
+uwb_pub = ros2publisher(node, strcat(ns, '/uwb_tag'), 'ro_slam_interfaces/UwbArray');
 uwb_msg = ros2message(uwb_pub);
 uwb_msg.anchor_num = uint8(nTag);
+
+shared_data_pub = ros2publisher(node, '/shared_landmarks_test', 'ro_slam_interfaces/LandmarkArray');
+shared_data_msg = ros2message(shared_data_pub);
 
 k = 0;
 
-if false
-    %% PREDIZIONE
-    k = k + 1;
-    
-    uRe = percorsi(k, 4, robot);
-    uLe = percorsi(k, 5, robot);
-    
-    ekf.prediction(uRe, uLe);
-    
-    odom_msg.velocity = [uRe / rWheel, uLe / rWheel];
-    send(odom_pub, odom_msg);
-    
-    %% CORREZIONE
-    x = percorsi(k, 1, robot);
-    y = percorsi(k, 2, robot);
-    
-    misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
-    ekf.correction(misureRange);
-    
-    for i = 1:nTag
-        uwb_msg.uwbs(i).header = uwb_msg.header;
-        uwb_msg.uwbs(i).id = int8(i-1);
-        uwb_msg.uwbs(i).id_str = num2str(i-1);
-        uwb_msg.uwbs(i).dist = single(misureRange(i));
-        uwb_msg.uwbs(i).x = single(0);
-        uwb_msg.uwbs(i).y = single(0);
-        uwb_msg.uwbs(i).z = single(0);
-    end
-    send(uwb_pub, uwb_msg);
-end
-
-
-
-
-
-
-
-%% PREDIZIONE+CORREZIONE
-% odom_msg.velocity = [0.0, 0.0];
-% send(odom_pub, odom_msg);
+%%
 rng(seed);
 pause(1)
 
-for iter = 1:500
-    stops = [300];
-    if ismember(iter, stops)
-        pause()
-    end
-
-    % PREDIZIONE
+pause_sleep = 0.05;
+stops = [];
+for iter = 1:1000
     k = k + 1;
-    
     disp(k)
 
-    uRe = percorsi(k, 4, robot);
-    uLe = percorsi(k, 5, robot);
+    for robot = 1:nRobot
+        % PREDIZIONE
+        uRe = percorsi(k, 4, robot);
+        uLe = percorsi(k, 5, robot);
+
+        if robot == curr_robot
+            if ismember(iter, stops)
+                pause()
+            end
+        
+            odom_msg.velocity = [uRe / rWheel, uLe / rWheel];
+            send(odom_pub, odom_msg);
+            pause(pause_sleep)
+
+        end    
+        ekfs(robot).prediction(uRe, uLe);
+
+        % CORREZIONE
+        if mod(k, 1) ~= 0
+            continue
+        end
+
+        x = percorsi(k, 1, robot);
+        y = percorsi(k, 2, robot);
+        misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
+
+        if robot == curr_robot
+            for i = 1:nTag
+                uwb_msg.uwbs(i).header = uwb_msg.header;
+                uwb_msg.uwbs(i).id = int8(i-1);
+                uwb_msg.uwbs(i).id_str = num2str(i-1);
+                uwb_msg.uwbs(i).dist = single(misureRange(i));
+                uwb_msg.uwbs(i).x = single(0);
+                uwb_msg.uwbs(i).y = single(0);
+                uwb_msg.uwbs(i).z = single(0);
+            end
+            send(uwb_pub, uwb_msg);
+            pause(pause_sleep)
+        end
+
+        ekfs(robot).correction(misureRange);
+
+        if robot == curr_robot
+            disp(ekfs(robot).xHatSLAM(:, k+1)')
+            disp(ekfs(robot).pesi)
+        end
+
+        if pruning && k >= stepStartPruning
+            ekfs(robot).pruning();
+        end
     
-    odom_msg.velocity = [uRe / rWheel, uLe / rWheel];
-    send(odom_pub, odom_msg);
-
-    ekf.prediction(uRe, uLe);
-
-    pause(0.3)
-
-    % CORREZIONE
-    if mod(k, 5) == 0
-        continue
+        ekfs(robot).save_history();
     end
 
-    x = percorsi(k, 1, robot);
-    y = percorsi(k, 2, robot);
-    misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
+    % CORREZIONE con altre misure
+    if sharing && k > stepStartSharing
+        sharedInfoArray = struct('id', {}, 'tags', {}, 'vars', {});
+        for robot = 1:nRobot
+            if sum(ekfs(robot).nPhiVett) == nTag
+                if startSharing(robot) == -1
+                    startSharing(robot) = k;
+                end
+                sharedInfoArray(end+1) = ekfs(robot).data_to_share();
+            end
+        end
 
-    for i = 1:nTag
-        uwb_msg.uwbs(i).header = uwb_msg.header;
-        uwb_msg.uwbs(i).id = int8(i-1);
-        uwb_msg.uwbs(i).id_str = num2str(i-1);
-        uwb_msg.uwbs(i).dist = single(misureRange(i));
-        uwb_msg.uwbs(i).x = single(0);
-        uwb_msg.uwbs(i).y = single(0);
-        uwb_msg.uwbs(i).z = single(0);
+        if ~isempty(sharedInfoArray)
+            for robot = 1:nRobot
+                if robot == curr_robot
+                    for i = 1:size(sharedInfoArray, 2)
+                        shared_data_msg.id = uint8(sharedInfoArray(i).id);
+                        for idx_tag = 1:nTag
+                            shared_data_msg.landmarks(idx_tag).x = double(sharedInfoArray(i).tags(1, idx_tag));
+                            shared_data_msg.landmarks(idx_tag).y = double(sharedInfoArray(i).tags(2, idx_tag));
+
+                            shared_data_msg.landmarks(idx_tag).var_x =  double(sharedInfoArray(i).vars(1, idx_tag));
+                            shared_data_msg.landmarks(idx_tag).var_y =  double(sharedInfoArray(i).vars(2, idx_tag));
+                            shared_data_msg.landmarks(idx_tag).cov_xy = double(sharedInfoArray(i).vars(3, idx_tag));
+                        end
+                        send(shared_data_pub, shared_data_msg);
+                        pause(pause_sleep)
+                    end
+                    shared_data_msg.id = uint8(100);
+                    send(shared_data_pub, shared_data_msg);
+                    pause(pause_sleep)
+                end
+    
+                ekfs(robot).correction_shared(sharedInfoArray);
+                if pruning && k >= stepStartPruning
+                    ekfs(robot).pruning();
+                end
+                if ekfs(robot).do_reset
+                    fprintf('Robot %d resetting at t=%d\n', robot, k)
+                    ekfs(robot).reset();
+                end
+            end
+        end
     end
-    send(uwb_pub, uwb_msg);
-
-    ekf.correction(misureRange);
-    % disp(ekf.xHatSLAM(:, k+1)')
-    disp(ekf.pesi)
-
-    if pruning && k >= stepStartPruning
-        ekf(robot).pruning();
-    end
-
-    ekf.save_history();
-
-    % disp(ekf.pesi)
-
-    pause(0.3)
 end
 
 return
-
-%%
-% ROS
-clc; clear; close all;
-node = ros2node("/ro_slam_matlab");
-
-misureRange = [1.234, 2.345, 3.456];
-nTag = length(misureRange)
-
-uwb_pub = ros2publisher(node, "/robot1/uwb_tag", "ro_slam_interfaces/UwbArray");
-uwb_msg = ros2message(uwb_pub);
-uwb_msg.anchor_num = uint8(nTag);
-
-for i = 1:nTag
-    uwb_msg.uwbs(i).header = uwb_msg.header;
-    uwb_msg.uwbs(i).id = int8(i-1);
-    uwb_msg.uwbs(i).id_str = num2str(i-1);
-    uwb_msg.uwbs(i).dist = single(misureRange(i));
-    uwb_msg.uwbs(i).x = single(0);
-    uwb_msg.uwbs(i).y = single(0);
-    uwb_msg.uwbs(i).z = single(0);
-end
-send(uwb_pub, uwb_msg);
