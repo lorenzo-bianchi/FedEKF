@@ -34,7 +34,7 @@ if DISEGNA_PLOT
         % Errori assoluti
         grafico_singolo;
 
-        if 1
+        if 0
             print(['plot', num2str(robot), '.eps'], '-depsc2');
         end
         %%
