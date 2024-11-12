@@ -30,7 +30,6 @@ classdef FedEkf < handle
         RsX
         RsY
         startPruning
-        stepStartPruning 
         minZerosStartPruning
         varX
         varY
@@ -100,7 +99,6 @@ classdef FedEkf < handle
 
             obj.startPruning = zeros(1, nTag);
             obj.minZerosStartPruning = data.minZerosStartPruning;
-            obj.stepStartPruning = data.stepStartPruning;
 
             obj.varX = zeros(1, nTag);
             obj.varY = zeros(1, nTag);
@@ -464,6 +462,9 @@ classdef FedEkf < handle
             end
 
             to_be_removed = [];
+            if obj.id == 1
+                a = 1;
+            end
             for idx = 1:length(other_measures)
                 otherRobotTags = other_measures(idx).tags;
                 [R, t, inliers] = ransacRototranslation(otherRobotTags', thisRobotTags, obj.data.numIterations, obj.data.distanceThreshold, round(obj.data.percentMinInliers * nTag));
@@ -496,7 +497,7 @@ classdef FedEkf < handle
 
             % check reset
             if isempty(posTagRobot)
-                if obj.data.reset
+                if obj.data.reset && sum(obj.nPhiVett == 1) >= 3
                     if length(other_measures) > 1 || other_measures(1).id ~= obj.id
                         obj.nReset = obj.nReset + 1;
                     end
@@ -643,6 +644,9 @@ classdef FedEkf < handle
 
         %
         function [obj] = reset(obj)
+            if obj.id == 1
+                a = 1;
+            end
             data_ = obj.data;
 
             nTag = data_.nTag;
@@ -684,14 +688,13 @@ classdef FedEkf < handle
             end
 
             obj.startPruning = zeros(1, nTag);
-            obj.stepStartPruning = obj.k + data_.stepStartPruning;
 
             obj.varX = zeros(1, nTag);
             obj.varY = zeros(1, nTag);
             obj.covXY = zeros(1, nTag);
 
             obj.nReset = 0;
-            obj.data.resetThr = obj.data.resetThr + obj.stepStartPruning;
+            %obj.data.resetThr = ;
             obj.do_reset = 0;
         end
     end % methods
