@@ -1,6 +1,8 @@
 clc; clear; close all;
 load('percorsi.mat', 'percorsi');
-seed = 13;
+seed = 12;
+
+nRobot = 6;
 
 %% PARAMETRI
 data = struct();
@@ -11,7 +13,8 @@ nTag = 10;
 nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
 pruning = 1;
 minZerosStartPruning = ceil(nPhi*0.6);
-stepStartPruning = 70;         % mettere valore piccolo per evitare errori iniziali
+stepStartPruning0 = 70;         % mettere valore piccolo per evitare errori iniziali
+stepStartPruning = repmat({stepStartPruning0}, 1, nRobot);
 sharing = 1;
 stepStartSharing = 400;
 reset = 1;
@@ -50,7 +53,6 @@ data.KL = KL;
 
 data.pruning = pruning;
 data.minZerosStartPruning = minZerosStartPruning;
-data.stepStartPruning = stepStartPruning;
 
 data.numIterations = numIterations;
 data.distanceThreshold = distanceThreshold;
@@ -160,7 +162,7 @@ for iter = 1:1000
             disp(ekfs(robot).pesi)
         end
 
-        if pruning && k >= stepStartPruning
+        if pruning && k >= stepStartPruning{robot}(end)
             ekfs(robot).pruning();
         end
     
@@ -201,11 +203,12 @@ for iter = 1:1000
                 end
     
                 ekfs(robot).correction_shared(sharedInfoArray);
-                if pruning && k >= stepStartPruning
+                if pruning && k >= stepStartPruning{robot}(end)
                     ekfs(robot).pruning();
                 end
                 if ekfs(robot).do_reset
                     fprintf('Robot %d resetting at t=%d\n', robot, k)
+                    stepStartPruning{robot}(end+1) = stepStartPruning{robot}(end) + k;
                     ekfs(robot).reset();
                 end
             end

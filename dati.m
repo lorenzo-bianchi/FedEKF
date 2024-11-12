@@ -3,7 +3,7 @@ rng(seed)
 
 DISEGNA_ANIMAZIONE = 0;
 DISEGNA_ULTIMO = 0;
-DISEGNA_PLOT = 1;
+DISEGNA_PLOT = 0;
 DISEGNA_ICP = 0;
 DISEGNA_VAR = 0;
 displayErrori = 0;
@@ -13,10 +13,11 @@ data = struct();
 nRobot = 6;
 
 nPassi = 1500;
-nPhi = 16; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
+nPhi = 8; % numero ipotesi angolo (si può poi variare in funzione della distanza misurata)
 pruning = 1;
 minZerosStartPruning = ceil(nPhi*0.6);
-stepStartPruning = 100;         % mettere valore piccolo per evitare errori iniziali
+stepStartPruning0 = 100;         % mettere valore piccolo per evitare errori iniziali
+stepStartPruning = repmat({stepStartPruning0}, 1, nRobot);
 sharing = 1;
 stepStartSharing = 400;
 reset = 1;
@@ -93,7 +94,6 @@ data.KLvera = KLvera;
 
 data.pruning = pruning;
 data.minZerosStartPruning = minZerosStartPruning;
-data.stepStartPruning = stepStartPruning;
 
 data.numIterations = numIterations;
 data.distanceThreshold = distanceThreshold;

@@ -34,7 +34,7 @@ for k = 2:nPassi
             misureRange = sqrt((x-cTag(:,1)).^2+(y-cTag(:,2)).^2) + sigmaDistanza*randn;
             ekfs(robot).correction(misureRange);
 
-            if pruning && k >= stepStartPruning
+            if pruning && k >= stepStartPruning{robot}(end)
                 ekfs(robot).pruning();
             end
         end
@@ -58,11 +58,12 @@ for k = 2:nPassi
         if ~isempty(sharedInfoArray)
             for robot = 1:nRobot
                 ekfs(robot).correction_shared(sharedInfoArray);
-                if pruning && k >= stepStartPruning
+                if pruning && k >= stepStartPruning{robot}(end)
                     ekfs(robot).pruning();
                 end
                 if ekfs(robot).do_reset
                     fprintf('Robot %d resetting at t=%d\n', robot, k)
+                    stepStartPruning{robot}(end+1) = stepStartPruning{robot}(end) + k;
                     ekfs(robot).reset();
                     tResets{robot}(end+1) = k;
 
